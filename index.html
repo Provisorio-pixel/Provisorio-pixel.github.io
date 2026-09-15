@@ -16,7 +16,10 @@
    ficar visível no navegador. Quem protege os dados são as regras do
    supabase.sql, que rodam no servidor do banco.
    ================================================================== */
-const SUPABASE_CONFIG = { url: "COLE_AQUI", anonKey: "COLE_AQUI" };
+const SUPABASE_CONFIG = {
+  "url": "https://dvcyfthdnuaujlzvwsfb.supabase.co",
+  "anonKey": "sb_publishable_7kRWFYd1Tt0eNeG3hczb5Q_stSoNuyh"
+};
 </script>
 <title>Área de consulta</title>
 <link rel="icon" href="data:,">
@@ -996,6 +999,18 @@ const Backend = {
   htmlIndisponivel() {
     return `<div style="max-width:520px;margin:8vh auto 0">
       <div class="card card-pad stack">
+        <h1>Em configuração</h1>
+        <p class="muted">Esta área ainda não está disponível para consulta.
+        Se você recebeu este endereço, guarde-o: em breve ele vai funcionar.</p>
+      </div>
+    </div>`;
+  },
+
+  /* mesma situação, mas explicada para quem cuida do site — só aparece
+     quando a página está aberta do próprio computador */
+  htmlIndisponivelLocal() {
+    return `<div style="max-width:520px;margin:8vh auto 0">
+      <div class="card card-pad stack">
         <h1>O site não está no ar</h1>
         <p class="muted">Esta página precisa de um dos dois para funcionar:</p>
         <div class="note note-info">
@@ -1004,8 +1019,8 @@ const Backend = {
           endereço certo. Abrir o arquivo direto, com duplo clique, não funciona.
         </div>
         <div class="note note-info">
-          <strong>Publicado na internet:</strong> as chaves do Firebase precisam estar
-          coladas no começo de index.html e admin.html. O LEIA-ME explica onde pegar.
+          <strong>Publicado na internet:</strong> as chaves do Supabase precisam estar
+          coladas no começo do index.html. O PUBLICAR-NO-AR.md explica onde pegar.
         </div>
       </div>
     </div>`;
@@ -1213,7 +1228,9 @@ const Credor = (function () {
 
      Regras que o código respeita, por decisão do responsável:
      • Nenhuma marca, nome de empresa, autoria ou rodapé em tela.
-     • Qualquer e-mail pode criar um acesso.
+     • O acesso é criado com O E-MAIL QUE ESTÁ NA BASE daquela conta.
+       Quem não tem e-mail cadastrado fala com o responsável, que o
+       inclui pelo painel. O banco é que garante isso, não a tela.
      • A identificação é por CPF + 4 últimos dígitos do telefone. No
        primeiro acesso, o site vincula o login à conta da pessoa.
      • Os quatro valores são fixos e não editáveis.
@@ -1251,7 +1268,7 @@ const Credor = (function () {
   function limpaIdent() { try { sessionStorage.removeItem(KEY_IDENT); } catch (e) { S._ident = null; } }
 
   /* ================================================================
-     1. LOGIN — qualquer e-mail
+     1. LOGIN — com o e-mail que está no cadastro
      ================================================================ */
   function telaLogin(erro = '', modo = 'entrar', emailPre = '') {
     render(`
@@ -1259,8 +1276,8 @@ const Credor = (function () {
       <div class="card card-pad stack">
         <div>
           <h1>Área de consulta</h1>
-          <p class="muted tiny" style="margin-top:4px">Crie um acesso com o e-mail que você preferir.
-            Na etapa seguinte você confirma sua identidade com CPF e telefone.</p>
+          <p class="muted tiny" style="margin-top:4px">Use o <strong>e-mail que você tem cadastrado
+            com a gente</strong>. Na etapa seguinte você confirma sua identidade com CPF e telefone.</p>
         </div>
         <div class="abas" role="tablist">
           <button class="aba" role="tab" aria-selected="${modo === 'entrar'}" data-modo="entrar">Entrar</button>
@@ -1271,7 +1288,7 @@ const Credor = (function () {
           <div class="field">
             <label for="iEmail">E-mail</label>
             <input id="iEmail" type="email" inputmode="email" autocomplete="username" required value="${escHtml(emailPre)}">
-            ${modo === 'criar' ? '<div class="help">Pode ser qualquer e-mail seu, não precisa ser o que está no nosso cadastro.</div>' : ''}
+            ${modo === 'criar' ? '<div class="help">Precisa ser o e-mail que consta no nosso cadastro. Se você não sabe qual é, ou se mudou de e-mail, use "Não consigo entrar".</div>' : ''}
           </div>
           <div class="field">
             <label for="iSenha">Senha</label>
@@ -1299,15 +1316,20 @@ const Credor = (function () {
     ligar('.aba', 'click', e => telaLogin('', e.currentTarget.dataset.modo, porId('iEmail').value));
     porId('bChamado').onclick = () => telaChamado();
     porId('bAdm').onclick = () => telaLoginResponsavel();
-    porId('bEsqueci').onclick = async () => {
-      const email = porId('iEmail').value.trim().toLowerCase();
-      if (!email) return telaLogin('Informe o e-mail para receber o link de redefinição.', modo);
-      try { await Backend.recuperarSenha(email); } catch (e) { /* não confirmar existência do e-mail */ }
+    /* Não há envio de e-mail neste site: a senha é redefinida pelo
+       responsável, a pedido, por atendimento. Prometer um link que
+       nunca chega seria pior do que não ter o botão. */
+    porId('bEsqueci').onclick = () => {
       modal({
-        titulo: 'Redefinição de senha',
-        corpo: `<p>Se existir um acesso com este e-mail, você vai receber um link para definir uma nova senha. Verifique também a caixa de spam.</p>`,
-        acoes: `<button class="btn-primary" onclick="fecharModal()">Entendi</button>`
+        titulo: 'Esqueceu a senha?',
+        corpo: `<p>A redefinição é feita pelo nosso atendimento, não por e-mail automático.</p>
+          <p class="muted tiny">Abra um atendimento informando seu nome completo, CPF e telefone.
+          Confirmamos sua identidade e liberamos uma senha nova.</p>`,
+        acoes: `<button id="mFechar2">Fechar</button>
+                <button class="btn-primary" id="mAtend">Abrir atendimento</button>`
       });
+      porId('mFechar2').onclick = fecharModal;
+      porId('mAtend').onclick = () => { fecharModal(); telaChamado(); };
     };
 
     porId('fLogin').onsubmit = async ev => {
@@ -1558,7 +1580,11 @@ const Credor = (function () {
         if (sit === 'bloqueada') {
           return telaIdentificacao('A consulta desta posição está encerrada no momento. Abra um atendimento e retornamos pelo WhatsApp.');
         }
-        return telaIdentificacao('Não encontramos esses dados. Confira o CPF e os 4 últimos dígitos do telefone que você tem cadastrado com a gente. Se a sua negociação já foi concluída, a consulta é encerrada — nesse caso, abra um atendimento.');
+        return telaIdentificacao('Não encontramos esses dados. Três coisas precisam bater: '
+          + 'o e-mail deste acesso, o CPF e os 4 últimos dígitos do telefone — todos como estão '
+          + 'no nosso cadastro. Se você criou o acesso com outro e-mail, ou se mudou de e-mail '
+          + 'ou de telefone, abra um atendimento. Se a sua negociação já foi concluída, a consulta '
+          + 'é encerrada.');
       }
       for (const c of achados) {
         await Backend.vincularConta(c.id, S.usuario.uid, S.usuario.email);
@@ -3485,7 +3511,13 @@ const Painel = (function () {
 (async function () {
   await Backend.init();
   const app = document.getElementById('app');
-  if (!Backend.pronto) { app.innerHTML = Backend.htmlIndisponivel(); return; }
+  if (!Backend.pronto) {
+    /* de fora, o visitante não precisa saber de bastidor; do próprio
+       computador, quem cuida do site precisa */
+    const emCasa = /^(localhost|127\.0\.0\.1|)$/.test(location.hostname);
+    app.innerHTML = emCasa ? Backend.htmlIndisponivelLocal() : Backend.htmlIndisponivel();
+    return;
+  }
   if (Backend.servidorDesatualizado) { app.innerHTML = Backend.htmlServidorAntigo(); return; }
   await Credor.iniciar();
 })();
