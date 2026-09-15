@@ -1,0 +1,3494 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow, noarchive, nosnippet">
+<meta name="referrer" content="no-referrer">
+<script>
+/* ==================================================================
+   >>> CHAVES DO PROJETO — só quando for publicar na internet <<<
+
+   Enquanto estiver "COLE_AQUI", esta página usa o servidor local
+   (servidor.mjs) que roda no seu computador. É assim que você testa.
+
+   Estas chaves não são secretas: a anon key do Supabase é feita para
+   ficar visível no navegador. Quem protege os dados são as regras do
+   supabase.sql, que rodam no servidor do banco.
+   ================================================================== */
+const SUPABASE_CONFIG = { url: "COLE_AQUI", anonKey: "COLE_AQUI" };
+</script>
+<title>Área de consulta</title>
+<link rel="icon" href="data:,">
+<style>
+/* ------------------------------------------------------------------
+   Estilo base. Deliberadamente neutro: sem logo, sem marca, sem cor
+   institucional, sem assinatura de rodapé. A tela pode ser printada.
+   ------------------------------------------------------------------ */
+:root{
+  --bg:#f4f5f7; --surface:#ffffff; --surface-2:#fafbfc;
+  --line:#e2e5e9; --line-strong:#cfd4da;
+  --txt:#1c2226; --txt-2:#5b666f; --txt-3:#8a939b;
+  --accent:#26414f; --accent-soft:#eef2f4;
+  --ok:#1d6f4f; --ok-soft:#e8f4ee;
+  --warn:#8a5a00; --warn-soft:#fdf3e0;
+  --bad:#a02b2b; --bad-soft:#fbeceb;
+  --info:#2a5578; --info-soft:#ecf2f8;
+  --r:10px; --r-sm:6px;
+  --shadow:0 1px 2px rgba(20,28,34,.05), 0 4px 16px rgba(20,28,34,.05);
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  font-family:var(--sans); background:var(--bg); color:var(--txt);
+  font-size:15px; line-height:1.5; -webkit-font-smoothing:antialiased;
+}
+h1,h2,h3{margin:0;font-weight:640;letter-spacing:-.01em}
+h1{font-size:1.25rem}
+h2{font-size:1.02rem}
+h3{font-size:.9rem}
+p{margin:0 0 .7em}
+a{color:var(--accent)}
+hr{border:0;border-top:1px solid var(--line);margin:18px 0}
+small{font-size:.8rem;color:var(--txt-2)}
+
+/* ---------- layout ---------- */
+.wrap{max-width:760px;margin:0 auto;padding:24px 16px 64px}
+.wrap-wide{max-width:1240px;margin:0 auto;padding:20px 16px 64px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow)}
+.card-pad{padding:20px}
+.stack>*+*{margin-top:14px}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.row-between{display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:space-between}
+.grow{flex:1 1 auto;min-width:0}
+.sep{height:1px;background:var(--line);margin:16px 0}
+.center{text-align:center}
+.right{text-align:right}
+.nowrap{white-space:nowrap}
+.hide{display:none!important}
+
+/* ---------- tipografia utilitária ---------- */
+.kicker{font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;color:var(--txt-3);font-weight:640}
+.muted{color:var(--txt-2)}
+.tiny{font-size:.78rem}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.num{font-variant-numeric:tabular-nums}
+
+/* ---------- formulários ---------- */
+label{display:block;font-size:.82rem;font-weight:600;color:var(--txt-2);margin-bottom:5px}
+input,select,textarea{
+  width:100%;font:inherit;color:var(--txt);background:var(--surface);
+  border:1px solid var(--line-strong);border-radius:var(--r-sm);padding:10px 11px;
+}
+input:focus,select:focus,textarea:focus{outline:2px solid var(--accent);outline-offset:-1px;border-color:var(--accent)}
+input[disabled],select[disabled],textarea[disabled]{background:var(--surface-2);color:var(--txt-3)}
+textarea{resize:vertical;min-height:74px}
+.field+.field{margin-top:12px}
+.help{font-size:.78rem;color:var(--txt-3);margin-top:5px}
+.check{display:flex;gap:10px;align-items:flex-start;font-weight:400;font-size:.9rem;color:var(--txt);cursor:pointer}
+.check input{width:auto;margin:2px 0 0;flex:0 0 auto}
+
+/* ---------- campo de dinheiro ---------- */
+.campo-moeda{display:flex;align-items:stretch;border:1px solid var(--line-strong);
+  border-radius:var(--r-sm);overflow:hidden;background:var(--surface)}
+.campo-moeda:focus-within{outline:2px solid var(--accent);outline-offset:-1px;border-color:var(--accent)}
+.campo-moeda span{display:flex;align-items:center;padding:0 9px;background:var(--surface-2);
+  border-right:1px solid var(--line);color:var(--txt-2);font-size:.85rem;font-weight:600}
+.campo-moeda input{border:0;border-radius:0;text-align:right;font-variant-numeric:tabular-nums}
+.campo-moeda input:focus{outline:none}
+
+/* ---------- botões ---------- */
+button,.btn{
+  font:inherit;font-weight:600;cursor:pointer;border-radius:var(--r-sm);
+  border:1px solid var(--line-strong);background:var(--surface);color:var(--txt);
+  padding:10px 15px;line-height:1.2;display:inline-flex;align-items:center;gap:7px;justify-content:center;
+}
+button:hover,.btn:hover{background:var(--surface-2)}
+button:disabled{opacity:.5;cursor:not-allowed}
+.btn-primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn-primary:hover{background:#1c3340}
+.btn-ok{background:var(--ok);border-color:var(--ok);color:#fff}
+.btn-ok:hover{background:#175a40}
+.btn-bad{background:var(--surface);border-color:#e0b6b4;color:var(--bad)}
+.btn-bad:hover{background:var(--bad-soft)}
+.btn-sm{padding:6px 11px;font-size:.82rem}
+.btn-block{width:100%}
+.btn-ghost{border-color:transparent;background:transparent;color:var(--accent);padding:6px 8px}
+.btn-ghost:hover{background:var(--accent-soft)}
+
+/* ---------- avisos ---------- */
+.note{border-radius:var(--r-sm);padding:12px 14px;font-size:.88rem;border:1px solid}
+.note-info{background:var(--info-soft);border-color:#cddff0;color:var(--info)}
+.note-ok{background:var(--ok-soft);border-color:#c3e3d3;color:var(--ok)}
+.note-warn{background:var(--warn-soft);border-color:#f0dcb4;color:var(--warn)}
+.note-bad{background:var(--bad-soft);border-color:#efc9c7;color:var(--bad)}
+
+/* ---------- etiquetas ---------- */
+.tag{display:inline-block;font-size:.72rem;font-weight:680;letter-spacing:.02em;
+  padding:3px 8px;border-radius:99px;border:1px solid transparent;white-space:nowrap}
+.tag-neutral{background:var(--accent-soft);color:var(--accent);border-color:#d7dfe3}
+.tag-ok{background:var(--ok-soft);color:var(--ok);border-color:#c3e3d3}
+.tag-warn{background:var(--warn-soft);color:var(--warn);border-color:#f0dcb4}
+.tag-bad{background:var(--bad-soft);color:var(--bad);border-color:#efc9c7}
+.tag-info{background:var(--info-soft);color:var(--info);border-color:#cddff0}
+
+/* ---------- painel de valores (é o que vai ser printado) ---------- */
+.valores{border:1px solid var(--line);border-radius:var(--r);overflow:hidden;background:var(--surface)}
+.valores-head{padding:14px 18px;background:var(--surface-2);border-bottom:1px solid var(--line)}
+.linha-valor{display:flex;justify-content:space-between;align-items:baseline;gap:16px;
+  padding:13px 18px;border-bottom:1px solid var(--line)}
+.linha-valor:last-child{border-bottom:0}
+.linha-valor .rot{font-size:.86rem;color:var(--txt-2)}
+.linha-valor .val{font-variant-numeric:tabular-nums;font-weight:620;font-size:1rem;white-space:nowrap}
+.linha-valor.destaque{background:var(--accent);color:#fff;border-bottom:0}
+.linha-valor.destaque .rot{color:#c9d7de}
+.linha-valor.destaque .val{font-size:1.35rem;font-weight:700;letter-spacing:-.01em}
+.linha-valor .val.neg{color:var(--bad)}
+.linha-valor.destaque .val.neg{color:#fff}
+
+/* ---------- abas ---------- */
+.abas{display:flex;gap:2px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.aba{background:transparent;border:0;border-bottom:2px solid transparent;border-radius:0;
+  padding:9px 13px;font-size:.88rem;font-weight:600;color:var(--txt-2)}
+.aba:hover{background:var(--surface-2)}
+.aba[aria-selected="true"]{color:var(--accent);border-bottom-color:var(--accent)}
+
+/* ---------- tabelas ---------- */
+.tbl-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:var(--r);background:var(--surface)}
+table{width:100%;border-collapse:collapse;font-size:.86rem}
+th{text-align:left;font-weight:660;font-size:.74rem;letter-spacing:.05em;text-transform:uppercase;
+  color:var(--txt-3);padding:10px 12px;border-bottom:1px solid var(--line);background:var(--surface-2);white-space:nowrap}
+td{padding:10px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+tr:last-child td{border-bottom:0}
+tbody tr:hover{background:var(--surface-2)}
+td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
+/* Tabela de credores — seis colunas, larguras fixas, sem rolagem lateral
+   na janela normal. O que era coluna própria e quase sempre repetia
+   (prioridade, situação, liberado) virou etiqueta dentro da célula. */
+.tbl-credores{min-width:880px;table-layout:fixed}
+.tbl-credores .c-nome{width:32%}
+.tbl-credores .c-chave{width:148px}
+.tbl-credores .c-acesso{width:auto}
+.tbl-credores .c-valor{width:132px}
+.tbl-credores .c-neg{width:136px}
+.tbl-credores .c-acao{width:86px}
+.tbl-credores td{vertical-align:middle;padding:11px 12px}
+.tbl-credores td:last-child{text-align:right}
+/* o botão só gruda na direita quando a janela for estreita demais */
+.tbl-credores th:last-child,.tbl-credores td:last-child{
+  position:sticky;right:0;z-index:1;background:var(--surface)}
+.tbl-credores thead th:last-child{background:var(--surface-2);z-index:2}
+.tbl-credores tbody tr:hover td:last-child{background:var(--surface-2)}
+
+.cel-nome{font-weight:650;line-height:1.3}
+.cel-tags{display:flex;flex-wrap:wrap;align-items:center;gap:5px 8px;margin-top:4px}
+.cel-tags:empty{display:none}
+.cel-ref{font-family:var(--mono);font-size:.72rem;color:var(--txt-3)}
+.cel-sub{font-size:.74rem;color:var(--txt-3);line-height:1.35;margin-top:3px;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cel-tags .cel-sub{margin-top:0}
+.cel-chave{font-size:.8rem;white-space:nowrap}
+.cel-valor{font-weight:650;white-space:nowrap}
+.tbl-credores .tag{white-space:nowrap}
+.tbl-credores .prio{line-height:1.25}
+
+/* ---------- bloco de dinheiro do painel ---------- */
+.dinheiro{display:grid;grid-template-columns:1fr auto 1fr;gap:22px;align-items:center}
+.dinheiro .divisor{width:1px;align-self:stretch;background:var(--line)}
+.valor-grande{font-size:clamp(1.5rem,2.4vw,2.1rem);font-weight:700;letter-spacing:-.02em;
+  font-variant-numeric:tabular-nums;white-space:nowrap;margin-top:6px;line-height:1.15}
+@media (max-width:720px){
+  .dinheiro{grid-template-columns:1fr;gap:14px}
+  .dinheiro .divisor{width:auto;height:1px}
+}
+.ponto{width:8px;height:8px;border-radius:2px;display:inline-block;margin-right:6px;vertical-align:1px}
+.t-de{font-size:.72rem;font-weight:600;color:var(--txt-3);margin-left:6px;letter-spacing:0}
+
+/* ---------- tiles do dashboard ---------- */
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(178px,1fr));gap:12px}
+.tile{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:15px 16px}
+.tile .t-rot{font-size:.75rem;color:var(--txt-2);font-weight:600;line-height:1.3}
+.tile .t-val{font-size:1.5rem;font-weight:700;letter-spacing:-.02em;margin-top:6px;font-variant-numeric:tabular-nums}
+.tile .t-sub{font-size:.76rem;color:var(--txt-3);margin-top:3px}
+.tile.wide{grid-column:span 2}
+.barra{display:flex;height:26px;border-radius:var(--r-sm);overflow:hidden;border:1px solid var(--line);background:var(--surface-2)}
+.barra i{display:block;height:100%}
+.legenda{display:flex;gap:14px;flex-wrap:wrap;margin-top:10px;font-size:.78rem;color:var(--txt-2)}
+.legenda span{display:inline-flex;align-items:center;gap:6px}
+.legenda b{width:10px;height:10px;border-radius:2px;display:inline-block}
+
+/* ---------- modal ---------- */
+.modal-bg{position:fixed;inset:0;background:rgba(20,28,34,.45);display:flex;align-items:center;
+  justify-content:center;padding:16px;z-index:50}
+.modal{background:var(--surface);border-radius:var(--r);max-width:560px;width:100%;
+  max-height:88vh;overflow:auto;box-shadow:0 24px 60px rgba(20,28,34,.28)}
+.modal-head{padding:16px 20px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
+.modal-body{padding:20px}
+.modal-foot{padding:14px 20px;border-top:1px solid var(--line);display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap}
+
+/* ---------- topo do adm ---------- */
+.adm-top{background:var(--surface);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:20}
+.adm-top-in{max-width:1240px;margin:0 auto;padding:11px 16px;display:flex;gap:14px;align-items:center;justify-content:space-between}
+
+/* ---------- termos ---------- */
+.termos-box{max-height:340px;overflow:auto;border:1px solid var(--line);border-radius:var(--r-sm);
+  padding:16px 18px;background:var(--surface-2);font-size:.88rem;line-height:1.62;white-space:pre-wrap}
+
+/* ---------- impressão ---------- */
+@media print{
+  body{background:#fff}
+  .no-print{display:none!important}
+  .card,.valores,.tbl-wrap{box-shadow:none;border-color:#bbb}
+  .linha-valor.destaque{background:#fff;color:#000;border:2px solid #000}
+  .linha-valor.destaque .rot{color:#333}
+  .wrap{padding:0}
+}
+@media (max-width:560px){
+  .linha-valor{flex-direction:column;gap:2px}
+  .linha-valor .val{font-size:1.05rem}
+  .tile.wide{grid-column:span 1}
+}
+
+/* ---------------- painel de administração ---------------- */
+  /* paleta de status validada para daltonismo (Delta E >= 20 no par mais próximo) */
+  :root{
+    --st-nao:#b06f00;   /* não iniciada  */
+    --st-neg:#1f7ac2;   /* em negociação */
+    --st-ace:#2f8f4a;   /* aceita        */
+    --st-pag:#8a52d0;   /* paga          */
+    --st-sem:#c03a48;   /* sem acordo    */
+  }
+  .filtros{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+  .chip{border:1px solid var(--line-strong);background:var(--surface);border-radius:99px;
+    padding:6px 13px;font-size:.82rem;font-weight:600;color:var(--txt-2);cursor:pointer}
+  .chip[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:#fff}
+  .chip b{font-weight:700;opacity:.75;margin-left:4px}
+  .prio{display:inline-flex;align-items:center;gap:6px;font-size:.78rem;font-weight:640;white-space:nowrap}
+  .prio i{width:9px;height:9px;border-radius:2px;display:inline-block;flex:0 0 auto}
+  .lote{background:var(--accent-soft);border:1px solid #d7dfe3;border-radius:var(--r-sm);padding:12px 14px}
+  .pend-item{border-left:3px solid var(--line-strong);padding:11px 14px;background:var(--surface-2);
+    border-radius:0 var(--r-sm) var(--r-sm) 0;margin-bottom:9px}
+  .pend-item.critica{border-left-color:var(--st-sem)}
+  .pend-item.alta{border-left-color:var(--st-nao)}
+  .pend-item.media{border-left-color:var(--st-neg)}
+  .pend-item.baixa{border-left-color:var(--line-strong)}
+  .kv{display:grid;grid-template-columns:auto 1fr;gap:5px 14px;font-size:.86rem}
+  .kv dt{color:var(--txt-2)}
+  .kv dd{margin:0;font-weight:600;font-variant-numeric:tabular-nums}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  @media (max-width:620px){.grid2{grid-template-columns:1fr}}
+
+</style>
+</head>
+<body>
+
+<!-- Topo do painel. Fica escondido: só aparece depois que o responsável
+     entra pelo botão "Acesso do responsável" da própria tela de login. -->
+<div class="adm-top no-print hide" id="admTopo">
+  <div class="adm-top-in">
+    <div class="row">
+      <strong style="font-size:.95rem">Administração</strong>
+      <span class="tag tag-neutral" id="tagModo"></span>
+    </div>
+    <div class="row">
+      <span class="tiny muted" id="quemSou"></span>
+      <button class="btn-ghost btn-sm" id="bRecarregar">Atualizar</button>
+      <button class="btn-ghost btn-sm" id="bSairAdm">Sair</button>
+    </div>
+  </div>
+  <div class="adm-top-in" style="padding-top:0">
+    <div class="abas" id="navAbas" role="tablist" style="border:0">
+      <button class="aba" role="tab" data-t="painel">Painel</button>
+      <button class="aba" role="tab" data-t="propostas">Propostas</button>
+      <button class="aba" role="tab" data-t="chamados">Chamados</button>
+      <button class="aba" role="tab" data-t="credores">Credores</button>
+      <button class="aba" role="tab" data-t="calibragem">Calibragem</button>
+      <button class="aba" role="tab" data-t="pendencias">Relatório de erros</button>
+      <button class="aba" role="tab" data-t="config">Configurações</button>
+    </div>
+  </div>
+</div>
+
+<div class="wrap" id="app"></div>
+<div class="wrap-wide hide" id="appAdm"></div>
+<div id="modais"></div>
+
+<script>
+/* ==================================================================
+   core.js — utilitários + camada de dados.
+
+   MODELO DE ACESSO (mudou em 10/09/2026)
+   A chave de acesso é o CPF + os 4 últimos dígitos do telefone, não
+   mais o e-mail. Qualquer e-mail pode criar um login; no primeiro
+   acesso a pessoa informa CPF e 4 dígitos, e o site VINCULA aquele
+   login à conta dela na base. Dali em diante o banco só devolve as
+   contas cujo uid é o do login autenticado.
+
+   Funciona em três modos, sempre com a BASE REAL:
+     • supabase — produção. Banco Postgres, e quem protege os dados são
+       as regras do supabase.sql, do lado do servidor.
+     • firebase — produção, alternativa. Mesma ideia, outro fornecedor.
+     • servidor local — quando não há chave nenhuma. Fala com o
+       servidor.mjs que roda no computador do responsável, e os dados
+       ficam em dados/dados.json.
+   Sem nenhum dos dois, o site avisa que não está no ar e não mostra tela
+   nenhuma. O resto do código não sabe em qual modo está rodando.
+   ================================================================== */
+
+/* ---------------- formatação e validação ---------------- */
+const BRL = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
+const fmtBRL = v => BRL.format(Number(v || 0));
+const fmtPct = (v, d = 2) => (Number(v || 0) * 100).toFixed(d).replace('.', ',') + '%';
+const soDigitos = s => String(s ?? '').replace(/\D/g, '');
+
+function fmtData(v) {
+  if (!v) return '—';
+  const d = v?.toDate ? v.toDate() : (v instanceof Date ? v : new Date(v));
+  if (isNaN(d)) return '—';
+  return d.toLocaleDateString('pt-BR');
+}
+function fmtDataHora(v) {
+  if (!v) return '—';
+  const d = v?.toDate ? v.toDate() : (v instanceof Date ? v : new Date(v));
+  if (isNaN(d)) return '—';
+  return d.toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
+}
+function msParaData(v) {
+  if (!v) return null;
+  return v?.toDate ? v.toDate() : new Date(v);
+}
+function diasDesde(v) {
+  const d = msParaData(v);
+  if (!d || isNaN(d)) return null;
+  return Math.floor((Date.now() - d.getTime()) / 86400000);
+}
+function hojeISO() { return new Date().toISOString().slice(0, 10); }
+
+function mascaraDoc(v) {
+  const d = soDigitos(v);
+  if (d.length === 14) return d.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, '$1.$2.$3/$4-$5');
+  if (d.length === 11) return d.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
+  return v || '';
+}
+function mascaraTel(v) {
+  const d = soDigitos(v);
+  if (d.length === 11) return d.replace(/(\d{2})(\d{5})(\d{4})/, '($1) $2-$3');
+  if (d.length === 10) return d.replace(/(\d{2})(\d{4})(\d{4})/, '($1) $2-$3');
+  return v || '';
+}
+function validaCPF(v) {
+  const c = soDigitos(v);
+  if (c.length !== 11 || /^(\d)\1{10}$/.test(c)) return false;
+  for (const i of [9, 10]) {
+    let s = 0;
+    for (let j = 0; j < i; j++) s += Number(c[j]) * ((i + 1) - j);
+    if ((s * 10) % 11 % 10 !== Number(c[i])) return false;
+  }
+  return true;
+}
+function validaCNPJ(v) {
+  const c = soDigitos(v);
+  if (c.length !== 14 || /^(\d)\1{13}$/.test(c)) return false;
+  for (const [n, w] of [[12, [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]], [13, [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]]]) {
+    let s = 0;
+    for (let i = 0; i < n; i++) s += Number(c[i]) * w[i];
+    const r = s % 11;
+    if ((r < 2 ? 0 : 11 - r) !== Number(c[n])) return false;
+  }
+  return true;
+}
+const validaDoc = v => (soDigitos(v).length === 14 ? validaCNPJ(v) : validaCPF(v));
+/* mostra só o suficiente para a pessoa lembrar qual e-mail usou */
+function mascaraEmail(e) {
+  const [u, d] = String(e || '').split('@');
+  if (!u || !d) return '';
+  return (u.length <= 2 ? u[0] + '*' : u.slice(0, 3) + '*'.repeat(Math.max(3, u.length - 3))) + '@' + d;
+}
+const validaEmail = v => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(String(v || '').trim());
+
+/* ---------------- cálculo das simulações ----------------
+   A taxa nunca é exibida em tela: só o valor da parcela, o total
+   e o percentual em relação ao saldo devedor.                        */
+function calcParcela(saldo, taxaMensal, n) {
+  saldo = Number(saldo || 0); n = Number(n || 1);
+  const i = Number(taxaMensal || 0);
+  if (n <= 0) return 0;
+  if (!i) return saldo / n;
+  return saldo * i / (1 - Math.pow(1 + i, -n));
+}
+function simularParcelamento(saldo, taxaMensal, n) {
+  const parcela = calcParcela(saldo, taxaMensal, n);
+  const total = parcela * n;
+  return {
+    parcelas: n,
+    valorParcela: Math.round(parcela * 100) / 100,
+    valorTotal: Math.round(total * 100) / 100,
+    percentual: saldo > 0 ? total / saldo : 0
+  };
+}
+/* ---------------- campos de dinheiro ----------------
+   O usuário digita só números e o campo mostra sempre 0.000,00.   */
+const moedaTexto = v => Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const moedaValor = txt => Number(soDigitos(txt)) / 100;
+function ligarMoeda(el) {
+  if (!el) return;
+  const formata = () => { el.value = el.value ? moedaTexto(moedaValor(el.value)) : ''; };
+  el.addEventListener('input', formata);
+  el.addEventListener('blur', formata);
+  formata();
+}
+
+function escHtml(s) {
+  return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+/* Quantas tentativas de identificação cada login tem. Depois disso só
+   o administrador libera. É o que impede alguém de descobrir os 4
+   dígitos de um CPF conhecido por tentativa e erro. */
+const MAX_TENTATIVAS = 8;
+
+/* =============== CONFIGURAÇÃO PADRÃO =============== */
+const CONFIG_PADRAO = {
+  maxParcelas: 36,
+  taxaPadrao: 0.01,
+  dataReferencia: '01/08/2026',
+  whatsappAdm: '',
+  tituloAba: 'Área de consulta',
+  exigirEmailVerificado: true,
+  /* O primeiro item é o padrão de quem ainda não foi classificado. */
+  prioridades: [
+    { nome: 'Sem prioridade', cor: '#8a939b' },
+    { nome: 'Urgente', cor: '#c03a48' },
+    { nome: 'Alta', cor: '#b06f00' },
+    { nome: 'Média', cor: '#1f7ac2' },
+    { nome: 'Baixa', cor: '#5b666f' }
+  ],
+  termos: `TERMO DE CONFIRMAÇÃO DE LEITURA
+
+[Texto jurídico a ser inserido pelo responsável no painel de administração,
+em Configurações → Termos.]
+
+Ao marcar a caixa abaixo e prosseguir, declaro que li e compreendi
+integralmente as informações apresentadas nesta página e os termos aqui
+estabelecidos.`
+};
+
+
+/* ================================================================
+   SERVIDOR LOCAL — servidor.mjs rodando no computador do responsável.
+   Mesma API do Firebase, mas os dados ficam em dados/dados.json.
+   ================================================================ */
+const Srv = {
+  CHAVE_TOKEN: 'cd_token',
+  _u: null,
+  _cbs: [],
+
+  /* versão mínima do servidor.mjs que esta página sabe usar. Se a
+     janela preta estiver rodando uma versão mais antiga (coisa comum:
+     o arquivo foi trocado mas o servidor continuou aberto), a página
+     avisa em vez de travar num botão. */
+  VERSAO_MINIMA: 2,
+  versaoServidor: 0,
+
+  async disponivel() {
+    if (!/^https?:$/.test(location.protocol)) return false;
+    try {
+      const r = await fetch('api/ping', { cache: 'no-store' });
+      if (!r.ok) return false;
+      const j = await r.json();
+      this.versaoServidor = Number(j.api || 1);
+      return !!j.ok;
+    } catch (e) { return false; }
+  },
+
+  _token() { try { return sessionStorage.getItem(this.CHAVE_TOKEN) || ''; } catch (e) { return this.__t || ''; } },
+  _guardaToken(t) { try { t ? sessionStorage.setItem(this.CHAVE_TOKEN, t) : sessionStorage.removeItem(this.CHAVE_TOKEN); } catch (e) { this.__t = t; } },
+
+  async _req(rota, opcoes = {}) {
+    const cab = { 'Content-Type': 'application/json' };
+    const t = this._token();
+    if (t) cab.Authorization = 'Bearer ' + t;
+    const r = await fetch('api' + rota, {
+      method: opcoes.metodo || 'GET',
+      headers: cab,
+      cache: 'no-store',
+      body: opcoes.dados !== undefined ? JSON.stringify(opcoes.dados) : undefined
+    });
+    let j = null;
+    try { j = await r.json(); } catch (e) { j = {}; }
+    if (!r.ok) {
+      const err = new Error(j.erro || j.code || ('http ' + r.status));
+      err.code = j.code; err.status = r.status; err.corpo = j;
+      if (r.status === 403 && /^campo /.test(String(j.erro || '')))
+        err.servidorAntigo = true;
+      throw err;
+    }
+    return j;
+  },
+
+  /* ---------- autenticação ---------- */
+  async criarAcesso(email, senha) {
+    const j = await this._req('/criar', { metodo: 'POST', dados: { email, senha } });
+    this._guardaToken(j.token);
+    this._u = { email: j.email, uid: j.uid, emailVerificado: j.emailVerificado };
+    this._notificar();
+    return this._u;
+  },
+  async entrar(email, senha) {
+    const j = await this._req('/entrar', { metodo: 'POST', dados: { email, senha } });
+    this._guardaToken(j.token);
+    this._u = { email: j.email, uid: j.uid, emailVerificado: j.emailVerificado };
+    this._notificar();
+    return this._u;
+  },
+  async reenviarVerificacao() { return true; },
+  async conferirVerificacao() {
+    await this._req('/verificar', { metodo: 'POST', dados: {} });
+    if (this._u) this._u.emailVerificado = true;
+    return true;
+  },
+  async recuperarSenha() { return true; },
+  async sair() {
+    try { await this._req('/sair', { metodo: 'POST', dados: {} }); } catch (e) {}
+    this._guardaToken('');
+    this._u = null;
+    this._notificar();
+  },
+  aoMudarUsuario(cb) {
+    this._cbs.push(cb);
+    (async () => {
+      if (this._token()) {
+        try {
+          const j = await this._req('/eu');
+          this._u = { email: j.email, uid: j.uid, emailVerificado: true };
+        } catch (e) { this._guardaToken(''); this._u = null; }
+      }
+      cb(this._u);
+    })();
+    return () => { this._cbs = this._cbs.filter(x => x !== cb); };
+  },
+  _notificar() { this._cbs.forEach(cb => cb(this._u)); },
+  async ehAdmin() {
+    try { return !!(await this._req('/eu')).admin; } catch (e) { return false; }
+  },
+
+  /* ---------- config ---------- */
+  async lerConfig() {
+    try { return { ...CONFIG_PADRAO, ...(await this._req('/config')) }; }
+    catch (e) { return { ...CONFIG_PADRAO }; }
+  },
+  async salvarConfig(patch) { return this._req('/config', { metodo: 'POST', dados: patch }); },
+
+  /* ---------- credor ---------- */
+  async minhasContas() { return this._req('/minhas-contas'); },
+  async lerTentativas() { return this._req('/tentativas-minhas'); },
+  async registrarTentativa(uid, cpf, ult4) {
+    return (await this._req('/tentativa', { metodo: 'POST', dados: { cpf, ult4 } })).n;
+  },
+  async procurarPorChave(cpf, ult4) {
+    try { return await this._req('/procurar?cpf=' + encodeURIComponent(cpf) + '&ult4=' + encodeURIComponent(ult4)); }
+    catch (e) { if (e.status === 429 || e.status === 400) return []; throw e; }
+  },
+  async situacaoDaChave(cpf, ult4) {
+    try {
+      return await this._req('/situacao?cpf=' + encodeURIComponent(cpf) + '&ult4=' + encodeURIComponent(ult4));
+    } catch (e) { return { situacao: 'desconhecida' }; }
+  },
+  async vincularConta(id) { return this._req('/vincular', { metodo: 'POST', dados: { id } }); },
+  async atualizarConta(id, patch) {
+    return this._req('/conta/' + encodeURIComponent(id), { metodo: 'POST', dados: patch });
+  },
+
+  /* ---------- propostas ---------- */
+  async propostasDaConta(contaId) {
+    const l = await this._req('/propostas?contaId=' + encodeURIComponent(contaId));
+    return l.sort((a, b) => new Date(b.criadoEm) - new Date(a.criadoEm));
+  },
+  async criarProposta(p) { return (await this._req('/propostas', { metodo: 'POST', dados: p })).id; },
+  async atualizarProposta(id, patch) {
+    return this._req('/proposta/' + encodeURIComponent(id), { metodo: 'POST', dados: patch });
+  },
+
+  /* ---------- chamados ---------- */
+  async abrirChamado(c) { return (await this._req('/chamados', { metodo: 'POST', dados: c })).id; },
+
+  /* ---------- administração ---------- */
+  async admContas() { return this._req('/adm/contas'); },
+  async admPropostas() { return this._req('/adm/propostas'); },
+  async admChamados() { return this._req('/adm/chamados'); },
+  async admTentativas() { return this._req('/adm/tentativas'); },
+  async admAtualizarChamado(id, patch) {
+    return this._req('/adm/chamado/' + encodeURIComponent(id), { metodo: 'POST', dados: patch });
+  },
+  async admDesvincular(id) {
+    return this._req('/adm/desvincular/' + encodeURIComponent(id), { metodo: 'POST', dados: {} });
+  },
+  async admZerarTentativas(uid) {
+    return this._req('/adm/tentativas/' + encodeURIComponent(uid), { metodo: 'DELETE' });
+  },
+  async admRecomecar() { return this._req('/adm/recomecar', { metodo: 'POST', dados: {} }); },
+
+  agora() { return new Date().toISOString(); }
+};
+
+/* ================================================================
+   BACKEND
+   ================================================================ */
+/* ================================================================
+   SUPABASE — o banco de produção.
+
+   Mesma interface do servidor local: as telas não sabem em qual dos
+   dois estão rodando. Quem protege os dados aqui não é este arquivo,
+   é o supabase.sql — Row Level Security e gatilhos, do lado do
+   servidor. Este código só pede; o banco é que decide.
+   ================================================================ */
+const Sup = {
+  _sb: null,
+  _u: null,
+  _cbs: [],
+
+  async _ligar(cfg) {
+    const { createClient } = await import('https://esm.sh/@supabase/supabase-js@2.45.4');
+    this._sb = createClient(cfg.url, cfg.anonKey, {
+      auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }
+    });
+    return true;
+  },
+
+  _pessoa(u) {
+    if (!u) return null;
+    return {
+      email: (u.email || '').toLowerCase(),
+      uid: u.id,
+      /* o Supabase só entrega sessão depois do e-mail confirmado,
+         então ter sessão já quer dizer confirmado */
+      emailVerificado: !!(u.email_confirmed_at || u.confirmed_at)
+    };
+  },
+
+  _erro(e) {
+    if (!e) return;
+    const err = new Error(e.message || 'erro');
+    const m = String(e.message || '').toLowerCase();
+    if (m.includes('already registered') || m.includes('already been registered'))
+      err.code = 'auth/email-already-in-use';
+    else if (m.includes('invalid login')) err.code = 'auth/invalid-credential';
+    else if (m.includes('password') && m.includes('6')) err.code = 'auth/weak-password';
+    else if (m.includes('email') && m.includes('invalid')) err.code = 'auth/invalid-email';
+    else if (m.includes('rate') || m.includes('too many')) err.code = 'auth/too-many-requests';
+    else if (m.includes('not confirmed')) err.code = 'auth/email-nao-confirmado';
+    err.original = e;
+    throw err;
+  },
+
+  /* ---------- autenticação ---------- */
+  async criarAcesso(email, senha) {
+    const e = String(email).trim().toLowerCase();
+    const { data, error } = await this._sb.auth.signUp({ email: e, password: senha });
+    if (error) this._erro(error);
+    /* sem sessão = o Supabase mandou o e-mail de confirmação e está
+       esperando a pessoa clicar no link */
+    return { email: e, uid: data.user ? data.user.id : null,
+             emailVerificado: !!data.session, precisaConfirmar: !data.session };
+  },
+
+  async entrar(email, senha) {
+    const e = String(email).trim().toLowerCase();
+    const { data, error } = await this._sb.auth.signInWithPassword({ email: e, password: senha });
+    if (error) this._erro(error);
+    return this._pessoa(data.user);
+  },
+
+  async reenviarVerificacao(email) {
+    const e = String(email || (this._u && this._u.email) || '').trim().toLowerCase();
+    if (!e) return;
+    const { error } = await this._sb.auth.resend({ type: 'signup', email: e });
+    if (error) this._erro(error);
+  },
+
+  async conferirVerificacao() {
+    const { data } = await this._sb.auth.getUser();
+    return !!(data && data.user && (data.user.email_confirmed_at || data.user.confirmed_at));
+  },
+
+  async recuperarSenha(email) {
+    const e = String(email).trim().toLowerCase();
+    const { error } = await this._sb.auth.resetPasswordForEmail(e, {
+      redirectTo: location.origin + location.pathname
+    });
+    if (error) this._erro(error);
+  },
+
+  async sair() { await this._sb.auth.signOut(); },
+
+  aoMudarUsuario(cb) {
+    this._cbs.push(cb);
+    this._sb.auth.getSession().then(({ data }) => {
+      this._u = this._pessoa(data.session ? data.session.user : null);
+      cb(this._u);
+    });
+    const { data: sub } = this._sb.auth.onAuthStateChange((_ev, sessao) => {
+      this._u = this._pessoa(sessao ? sessao.user : null);
+      this._cbs.forEach(f => f(this._u));
+    });
+    return () => sub.subscription.unsubscribe();
+  },
+
+  async ehAdmin(uid) {
+    const { data } = await this._sb.from('admins').select('uid').eq('uid', uid).maybeSingle();
+    return !!data;
+  },
+
+  /* ---------- config ---------- */
+  async lerConfig() {
+    const { data } = await this._sb.from('config').select('dados').eq('id', 'geral').maybeSingle();
+    return { ...CONFIG_PADRAO, ...((data && data.dados) || {}) };
+  },
+  async salvarConfig(patch) {
+    const atual = await this.lerConfig();
+    const { error } = await this._sb.from('config')
+      .upsert({ id: 'geral', dados: { ...atual, ...patch } });
+    if (error) this._erro(error);
+  },
+
+  /* ---------- credor ---------- */
+  async minhasContas(uid) {
+    const { data, error } = await this._sb.from('contas').select('*')
+      .eq('uid', uid).eq('ativo', true);
+    if (error) this._erro(error);
+    return data || [];
+  },
+
+  async lerTentativas(uid) {
+    const { data } = await this._sb.from('tentativas').select('*').eq('uid', uid).maybeSingle();
+    return data || { n: 0 };
+  },
+
+  async registrarTentativa(uid, cpf, ult4) {
+    const atual = await this.lerTentativas(uid);
+    const n = Number(atual.n || 0) + 1;
+    if (!atual.n) {
+      const { error } = await this._sb.from('tentativas')
+        .insert({ uid, n: 1, cpf, ult4, em: new Date().toISOString() });
+      if (error) this._erro(error);
+      return 1;
+    }
+    const { error } = await this._sb.from('tentativas')
+      .update({ n, cpf, ult4, em: new Date().toISOString() }).eq('uid', uid);
+    if (error) this._erro(error);
+    return n;
+  },
+
+  /* As regras do banco só devolvem a conta se a tentativa acima tiver
+     sido registrada com esta mesma chave e dentro do limite. */
+  async procurarPorChave(cpf, ult4) {
+    /* duas consultas em vez de um "or" com nome de coluna em maiúsculas:
+       evita depender de como o PostgREST interpreta ult4Alt no filtro */
+    const achados = new Map();
+    for (const campo of ['ult4', 'ult4Alt']) {
+      const { data } = await this._sb.from('contas').select('*')
+        .eq('cpf', cpf).eq(campo, ult4).is('uid', null).eq('ativo', true);
+      (data || []).forEach(c => achados.set(c.id, c));
+    }
+    return [...achados.values()];
+  },
+
+  /* Como as regras escondem as contas já vinculadas, daqui não dá
+     para distinguir os casos — igual ao Firebase. */
+  async situacaoDaChave() { return { situacao: 'desconhecida' }; },
+
+  async vincularConta(id, uid, email) {
+    const { error } = await this._sb.from('contas').update({ uid }).eq('id', id);
+    if (error) this._erro(error);
+  },
+
+  async atualizarConta(id, patch) {
+    const { error } = await this._sb.from('contas').update(patch).eq('id', id);
+    if (error) this._erro(error);
+  },
+
+  /* ---------- propostas ---------- */
+  async propostasDaConta(contaId) {
+    const { data, error } = await this._sb.from('propostas').select('*')
+      .eq('contaId', contaId).order('criadoEm', { ascending: false });
+    if (error) return [];
+    return data || [];
+  },
+
+  async criarProposta(p) {
+    const id = 'p' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+    const agora = new Date().toISOString();
+    const { error } = await this._sb.from('propostas')
+      .insert({ ...p, id, criadoEm: agora, ultimaInteracaoEm: agora });
+    if (error) this._erro(error);
+    return id;
+  },
+
+  async atualizarProposta(id, patch) {
+    const { error } = await this._sb.from('propostas')
+      .update({ ...patch, ultimaInteracaoEm: new Date().toISOString() }).eq('id', id);
+    if (error) this._erro(error);
+  },
+
+  /* ---------- chamados ---------- */
+  async abrirChamado(c) {
+    const id = 'ch' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+    const { error } = await this._sb.from('chamados')
+      .insert({ ...c, id, status: 'aberto', respostaAdm: null, criadoEm: new Date().toISOString() });
+    if (error) this._erro(error);
+    return id;
+  },
+
+  /* ---------- administração ---------- */
+  async admContas() {
+    const todas = [];
+    let de = 0;
+    /* a API devolve no máximo 1000 por vez; a base é menor que isso,
+       mas o laço deixa pronto para crescer */
+    for (;;) {
+      const { data, error } = await this._sb.from('contas').select('*')
+        .order('saldoDevedor', { ascending: false }).range(de, de + 999);
+      if (error) this._erro(error);
+      todas.push(...(data || []));
+      if (!data || data.length < 1000) break;
+      de += 1000;
+    }
+    return todas;
+  },
+  async admPropostas() {
+    const { data, error } = await this._sb.from('propostas').select('*')
+      .order('criadoEm', { ascending: false });
+    if (error) this._erro(error);
+    return data || [];
+  },
+  async admChamados() {
+    const { data, error } = await this._sb.from('chamados').select('*')
+      .order('criadoEm', { ascending: false });
+    if (error) this._erro(error);
+    return data || [];
+  },
+  async admTentativas() {
+    const { data } = await this._sb.from('tentativas').select('*').order('em', { ascending: false });
+    return (data || []).map(t => ({ ...t, id: t.uid }));
+  },
+  async admAtualizarChamado(id, patch) {
+    const { error } = await this._sb.from('chamados').update(patch).eq('id', id);
+    if (error) this._erro(error);
+  },
+
+  /* Desvincular devolve a conta para a fila. O aceite do termo e a
+     confirmação de telefone também caem: eles são da PESSOA, não da
+     conta, e quem entrar depois precisa aceitar de novo. */
+  async admDesvincular(id) {
+    const { error } = await this._sb.from('contas').update({
+      uid: null, emailAcesso: '', vinculadoEm: null,
+      termosAceitos: false, termosAceitosEm: null, telefoneConfirmado: false
+    }).eq('id', id);
+    if (error) this._erro(error);
+  },
+
+  async admZerarTentativas(uid) {
+    const { error } = await this._sb.from('tentativas').delete().eq('uid', uid);
+    if (error) this._erro(error);
+  },
+
+  async admRecomecar() {
+    throw new Error('No banco de produção, recomeçar do zero é feito pelo importador.');
+  },
+
+  agora() { return new Date().toISOString(); }
+};
+
+const Backend = {
+  modo: 'indisponivel',
+  _fb: null,
+
+  async init() {
+    /* 1º) Supabase, quando o bloco SUPABASE_CONFIG tem chaves reais */
+    const sup = (typeof SUPABASE_CONFIG !== 'undefined') ? SUPABASE_CONFIG : null;
+    const supOk = sup && sup.url && sup.anonKey
+      && !/COLE_AQUI|SUA_|xxxx/i.test(JSON.stringify(sup));
+    if (supOk) {
+      try {
+        await Sup._ligar(sup);
+        Object.assign(this, Sup);
+        this.modo = 'supabase';
+        return this.modo;
+      } catch (e) {
+        console.error('Não consegui falar com o Supabase.', e);
+        this.modo = 'indisponivel';
+        return this.modo;
+      }
+    }
+
+    /* 2º) Firebase, se alguém tiver colado chaves dele */
+    const cfg = (typeof FIREBASE_CONFIG !== 'undefined') ? FIREBASE_CONFIG : null;
+    const valido = cfg && cfg.apiKey && !/COLE_AQUI|SUA_|xxxx/i.test(JSON.stringify(cfg));
+    if (!valido) {
+      /* sem chaves do Firebase: usa o servidor local que roda no
+         computador do responsável */
+      if (await Srv.disponivel()) {
+        Object.assign(this, Srv);
+        this.modo = 'servidor';
+        return this.modo;
+      }
+      this.modo = 'indisponivel';
+      return this.modo;
+    }
+    try {
+      const V = '10.14.1';
+      const [app, auth, fs] = await Promise.all([
+        import(`https://www.gstatic.com/firebasejs/${V}/firebase-app.js`),
+        import(`https://www.gstatic.com/firebasejs/${V}/firebase-auth.js`),
+        import(`https://www.gstatic.com/firebasejs/${V}/firebase-firestore.js`)
+      ]);
+      const a = app.initializeApp(cfg);
+      this._fb = { app: a, auth: auth.getAuth(a), db: fs.getFirestore(a), A: auth, F: fs };
+      await auth.setPersistence(this._fb.auth, auth.browserSessionPersistence).catch(() => {});
+      this.modo = 'firebase';
+    } catch (e) {
+      console.error('Não consegui falar com o Firebase.', e);
+      this.modo = 'indisponivel';
+    }
+    return this.modo;
+  },
+
+  get local() { return this.modo === 'servidor'; },
+  get servidorDesatualizado() {
+    return this.modo === 'servidor' && Srv.versaoServidor < Srv.VERSAO_MINIMA;
+  },
+
+  /* frase curta e acionável para mostrar quando uma gravação falha */
+  explicaErro(e) {
+    if (e && (e.servidorAntigo || this.servidorDesatualizado))
+      return 'O servidor que está rodando é de uma versão anterior à desta página. '
+        + 'Feche a janela preta e clique no iniciar.bat de novo — os dados são mantidos.';
+    if (e && e.status === 403) return 'O servidor recusou esta alteração.';
+    if (e && e.status === 401) return 'Sua sessão expirou. Saia e entre de novo.';
+    return 'Não foi possível salvar agora. Verifique se a janela preta do servidor '
+      + 'continua aberta e tente de novo.';
+  },
+  get pronto() {
+    return this.modo === 'supabase' || this.modo === 'firebase' || this.modo === 'servidor';
+  },
+  get rotulo() { return this.modo === 'servidor' ? 'servidor local' : 'produção'; },
+
+  /* o servidor.mjs aberto é mais antigo do que esta página */
+  htmlServidorAntigo() {
+    return `<div style="max-width:520px;margin:8vh auto 0">
+      <div class="card card-pad stack">
+        <h1>Reinicie o servidor</h1>
+        <p class="muted">Os arquivos do site foram atualizados, mas a janela preta que está
+        aberta no seu computador ainda está rodando a versão anterior. Enquanto isso, algumas
+        telas não conseguem salvar.</p>
+        <div class="note note-info">
+          <strong>O que fazer:</strong> feche a janela preta do servidor e clique no
+          <strong>iniciar.bat</strong> de novo. Depois recarregue esta página.
+          <br><br>Nada se perde: os dados ficam no arquivo, não na janela.
+        </div>
+      </div>
+    </div>`;
+  },
+
+  /* tela mostrada quando não há nem Firebase nem servidor local */
+  htmlIndisponivel() {
+    return `<div style="max-width:520px;margin:8vh auto 0">
+      <div class="card card-pad stack">
+        <h1>O site não está no ar</h1>
+        <p class="muted">Esta página precisa de um dos dois para funcionar:</p>
+        <div class="note note-info">
+          <strong>No seu computador:</strong> feche esta aba e clique em
+          <strong>iniciar.bat</strong>, na pasta do projeto. Ele liga o servidor e abre o
+          endereço certo. Abrir o arquivo direto, com duplo clique, não funciona.
+        </div>
+        <div class="note note-info">
+          <strong>Publicado na internet:</strong> as chaves do Firebase precisam estar
+          coladas no começo de index.html e admin.html. O LEIA-ME explica onde pegar.
+        </div>
+      </div>
+    </div>`;
+  },
+
+  /* ---------- autenticação: qualquer e-mail pode criar acesso ---------- */
+  async criarAcesso(email, senha) {
+    const e = String(email).trim().toLowerCase();
+    const { createUserWithEmailAndPassword, sendEmailVerification } = this._fb.A;
+    const cred = await createUserWithEmailAndPassword(this._fb.auth, e, senha);
+    await sendEmailVerification(cred.user).catch(() => {});
+    return { email: cred.user.email, uid: cred.user.uid, emailVerificado: false };
+  },
+
+  async entrar(email, senha) {
+    const e = String(email).trim().toLowerCase();
+    const { signInWithEmailAndPassword } = this._fb.A;
+    const cred = await signInWithEmailAndPassword(this._fb.auth, e, senha);
+    return { email: cred.user.email, uid: cred.user.uid, emailVerificado: cred.user.emailVerified };
+  },
+
+  async reenviarVerificacao() {
+    const u = this._fb.auth.currentUser;
+    if (!u) return;
+    return this._fb.A.sendEmailVerification(u);
+  },
+
+  /* Depois que a pessoa clica no link do e-mail, o token em memória
+     ainda diz que não está verificado — é preciso recarregar. */
+  async conferirVerificacao() {
+    const u = this._fb.auth.currentUser;
+    if (!u) return false;
+    await u.reload();
+    await u.getIdToken(true);
+    return u.emailVerified;
+  },
+
+  async recuperarSenha(email) {
+    const e = String(email).trim().toLowerCase();
+    return this._fb.A.sendPasswordResetEmail(this._fb.auth, e);
+  },
+
+  async sair() {
+    return this._fb.A.signOut(this._fb.auth);
+  },
+
+  aoMudarUsuario(cb) {
+    return this._fb.A.onAuthStateChanged(this._fb.auth, u => cb(u
+      ? { email: (u.email || '').toLowerCase(), uid: u.uid, emailVerificado: u.emailVerified }
+      : null));
+  },
+
+  async ehAdmin(uid) {
+    const { doc, getDoc } = this._fb.F;
+    return (await getDoc(doc(this._fb.db, 'admins', uid))).exists();
+  },
+
+  /* ---------- config ---------- */
+  async lerConfig() {
+    const { doc, getDoc } = this._fb.F;
+    const s = await getDoc(doc(this._fb.db, 'config', 'geral'));
+    return s.exists() ? { ...CONFIG_PADRAO, ...s.data() } : { ...CONFIG_PADRAO };
+  },
+  async salvarConfig(patch) {
+    const { doc, setDoc } = this._fb.F;
+    return setDoc(doc(this._fb.db, 'config', 'geral'), patch, { merge: true });
+  },
+
+  /* ---------- contas já vinculadas ao login ---------- */
+  async minhasContas(uid) {
+    const { collection, query, where, getDocs } = this._fb.F;
+    const s = await getDocs(query(collection(this._fb.db, 'contas'),
+      where('uid', '==', uid), where('ativo', '==', true)));
+    return s.docs.map(d => ({ id: d.id, ...d.data() }));
+  },
+
+  /* ---------- identificação e vínculo ----------
+     1) registra a tentativa (contador que só sobe, gravado no banco);
+     2) procura a conta por CPF + 4 dígitos, entre as ainda sem vínculo;
+     3) grava o uid e o e-mail do login na conta.
+     As regras do Firestore só liberam o passo 2 se o passo 1 tiver
+     acontecido com esses mesmos dados e com o contador dentro do limite. */
+  async lerTentativas(uid) {
+    const { doc, getDoc } = this._fb.F;
+    const s = await getDoc(doc(this._fb.db, 'tentativas', uid));
+    return s.exists() ? s.data() : { n: 0 };
+  },
+
+  async registrarTentativa(uid, cpf, ult4) {
+    const { doc, getDoc, setDoc, updateDoc, serverTimestamp } = this._fb.F;
+    const ref = doc(this._fb.db, 'tentativas', uid);
+    const atual = await getDoc(ref);
+    if (!atual.exists()) {
+      await setDoc(ref, { n: 1, cpf, ult4, em: serverTimestamp() });
+      return 1;
+    }
+    const n = Number(atual.data().n || 0) + 1;
+    await updateDoc(ref, { n, cpf, ult4, em: serverTimestamp() });
+    return n;
+  },
+
+  async procurarPorChave(cpf, ult4) {
+    const { collection, query, where, getDocs } = this._fb.F;
+    const achados = new Map();
+    for (const campo of ['ult4', 'ult4Alt']) {
+      const s = await getDocs(query(collection(this._fb.db, 'contas'),
+        where('cpf', '==', cpf), where(campo, '==', ult4),
+        where('uid', '==', null), where('ativo', '==', true))).catch(() => null);
+      if (s) s.docs.forEach(d => achados.set(d.id, { id: d.id, ...d.data() }));
+    }
+    return [...achados.values()];
+  },
+
+  /* Por que a chave não achou nada. No Firebase as regras escondem
+     contas já vinculadas, então lá a resposta é sempre 'desconhecida'. */
+  async situacaoDaChave(cpf, ult4) {
+    return { situacao: 'desconhecida' };
+  },
+
+  async vincularConta(id, uid, email) {
+    const { doc, updateDoc, serverTimestamp } = this._fb.F;
+    return updateDoc(doc(this._fb.db, 'contas', id), {
+      uid, emailAcesso: email, vinculadoEm: serverTimestamp(), atualizadoEm: serverTimestamp()
+    });
+  },
+
+  async atualizarConta(id, patch) {
+    const { doc, updateDoc, serverTimestamp } = this._fb.F;
+    return updateDoc(doc(this._fb.db, 'contas', id), { ...patch, atualizadoEm: serverTimestamp() });
+  },
+
+  /* ---------- propostas ---------- */
+  async propostasDaConta(contaId) {
+    const { collection, query, where, getDocs } = this._fb.F;
+    const s = await getDocs(query(collection(this._fb.db, 'propostas'), where('contaId', '==', contaId)));
+    return s.docs.map(d => ({ id: d.id, ...d.data() }))
+      .sort((a, b) => (msParaData(b.criadoEm) || 0) - (msParaData(a.criadoEm) || 0));
+  },
+
+  async criarProposta(p) {
+    const { collection, addDoc, serverTimestamp } = this._fb.F;
+    const ref = await addDoc(collection(this._fb.db, 'propostas'), {
+      ...p, criadoEm: serverTimestamp(), ultimaInteracaoEm: serverTimestamp()
+    });
+    return ref.id;
+  },
+
+  async atualizarProposta(id, patch) {
+    const { doc, updateDoc, serverTimestamp } = this._fb.F;
+    return updateDoc(doc(this._fb.db, 'propostas', id), { ...patch, ultimaInteracaoEm: serverTimestamp() });
+  },
+
+  /* ---------- chamados ---------- */
+  async abrirChamado(c) {
+    const { collection, addDoc, serverTimestamp } = this._fb.F;
+    const ref = await addDoc(collection(this._fb.db, 'chamados'),
+      { ...c, status: 'aberto', criadoEm: serverTimestamp() });
+    return ref.id;
+  },
+
+  /* ---------- administração ---------- */
+  async admContas() {
+    const { collection, getDocs } = this._fb.F;
+    return (await getDocs(collection(this._fb.db, 'contas'))).docs.map(d => ({ id: d.id, ...d.data() }));
+  },
+  async admPropostas() {
+    const { collection, getDocs } = this._fb.F;
+    return (await getDocs(collection(this._fb.db, 'propostas'))).docs.map(d => ({ id: d.id, ...d.data() }));
+  },
+  async admChamados() {
+    const { collection, getDocs } = this._fb.F;
+    return (await getDocs(collection(this._fb.db, 'chamados'))).docs.map(d => ({ id: d.id, ...d.data() }));
+  },
+  async admAtualizarChamado(id, patch) {
+    const { doc, updateDoc } = this._fb.F;
+    return updateDoc(doc(this._fb.db, 'chamados', id), patch);
+  },
+  /* solta a conta para ser vinculada de novo (pessoa errou o login, trocou de e-mail…) */
+  async admDesvincular(id) {
+    const { doc, updateDoc, serverTimestamp } = this._fb.F;
+    return updateDoc(doc(this._fb.db, 'contas', id), {
+      uid: null, emailAcesso: '', vinculadoEm: null,
+      termosAceitos: false, termosAceitosEm: null, telefoneConfirmado: false,
+      atualizadoEm: serverTimestamp()
+    });
+  },
+  /* devolve tentativas de identificação a quem estourou o limite */
+  async admZerarTentativas(uid) {
+    const { doc, deleteDoc } = this._fb.F;
+    return deleteDoc(doc(this._fb.db, 'tentativas', uid));
+  },
+  async admTentativas() {
+    const { collection, getDocs } = this._fb.F;
+    return (await getDocs(collection(this._fb.db, 'tentativas'))).docs.map(d => ({ uid: d.id, ...d.data() }));
+  },
+
+  agora() { return this._fb.F.serverTimestamp(); }
+};
+
+</script>
+<script>
+const Credor = (function () {
+  /* ==================================================================
+     Área do credor.
+
+     Regras que o código respeita, por decisão do responsável:
+     • Nenhuma marca, nome de empresa, autoria ou rodapé em tela.
+     • Qualquer e-mail pode criar um acesso.
+     • A identificação é por CPF + 4 últimos dígitos do telefone. No
+       primeiro acesso, o site vincula o login à conta da pessoa.
+     • Os quatro valores são fixos e não editáveis.
+     • A taxa de juros nunca é exibida — só reais e percentuais.
+     • Uma proposta em aberto por vez, por conta.
+     ================================================================== */
+
+  const S = {
+    usuario: null, contas: [], contasVisiveis: [], propostas: [], cfg: null,
+    tentativas: 0, erradas: 0, contaSel: null, aba: 'parcelamento'
+  };
+  const el = document.getElementById('app');
+  const elModais = document.getElementById('modais');
+  const KEY_IDENT = 'cd_ident';
+
+  /* ---------------- utilidades de tela ---------------- */
+  const render = h => { el.innerHTML = h; };
+  const porId = id => document.getElementById(id);
+  const ligar = (sel, ev, fn) => el.querySelectorAll(sel).forEach(n => n.addEventListener(ev, fn));
+  const aviso = (t, k = 'info') => `<div class="note note-${k}">${escHtml(t)}</div>`;
+
+  function modal({ titulo, corpo, acoes }) {
+    elModais.innerHTML = `<div class="modal-bg" id="mbg"><div class="modal" role="dialog" aria-modal="true">
+      <div class="modal-head"><h2>${escHtml(titulo)}</h2>
+        <button class="btn-ghost btn-sm" id="mFechar" aria-label="Fechar">✕</button></div>
+      <div class="modal-body">${corpo}</div>
+      <div class="modal-foot">${acoes}</div></div></div>`;
+    porId('mFechar').onclick = fecharModal;
+    porId('mbg').addEventListener('click', e => { if (e.target.id === 'mbg') fecharModal(); });
+  }
+  const fecharModal = () => { elModais.innerHTML = ''; };
+
+  function identOk() { try { return sessionStorage.getItem(KEY_IDENT); } catch (e) { return S._ident || null; } }
+  function setIdent(cpf) { try { sessionStorage.setItem(KEY_IDENT, cpf); } catch (e) { S._ident = cpf; } }
+  function limpaIdent() { try { sessionStorage.removeItem(KEY_IDENT); } catch (e) { S._ident = null; } }
+
+  /* ================================================================
+     1. LOGIN — qualquer e-mail
+     ================================================================ */
+  function telaLogin(erro = '', modo = 'entrar', emailPre = '') {
+    render(`
+    <div style="max-width:430px;margin:6vh auto 0">
+      <div class="card card-pad stack">
+        <div>
+          <h1>Área de consulta</h1>
+          <p class="muted tiny" style="margin-top:4px">Crie um acesso com o e-mail que você preferir.
+            Na etapa seguinte você confirma sua identidade com CPF e telefone.</p>
+        </div>
+        <div class="abas" role="tablist">
+          <button class="aba" role="tab" aria-selected="${modo === 'entrar'}" data-modo="entrar">Entrar</button>
+          <button class="aba" role="tab" aria-selected="${modo === 'criar'}" data-modo="criar">Criar acesso</button>
+        </div>
+        ${erro ? aviso(erro, 'bad') : ''}
+        <form id="fLogin" class="stack" autocomplete="on">
+          <div class="field">
+            <label for="iEmail">E-mail</label>
+            <input id="iEmail" type="email" inputmode="email" autocomplete="username" required value="${escHtml(emailPre)}">
+            ${modo === 'criar' ? '<div class="help">Pode ser qualquer e-mail seu, não precisa ser o que está no nosso cadastro.</div>' : ''}
+          </div>
+          <div class="field">
+            <label for="iSenha">Senha</label>
+            <input id="iSenha" type="password" autocomplete="${modo === 'criar' ? 'new-password' : 'current-password'}" required minlength="6">
+            ${modo === 'criar' ? '<div class="help">Mínimo de 6 caracteres.</div>' : ''}
+          </div>
+          ${modo === 'criar' ? `<div class="field">
+            <label for="iSenha2">Repita a senha</label>
+            <input id="iSenha2" type="password" autocomplete="new-password" required minlength="6">
+          </div>` : ''}
+          <button class="btn-primary btn-block" type="submit" id="bEnviar">
+            ${modo === 'criar' ? 'Criar acesso' : 'Entrar'}
+          </button>
+        </form>
+        <div class="row-between">
+          <button class="btn-ghost btn-sm" id="bEsqueci">Esqueci minha senha</button>
+          <button class="btn-ghost btn-sm" id="bChamado">Não consigo entrar</button>
+        </div>
+      </div>
+      <div class="center" style="margin-top:16px">
+        <button class="btn-ghost btn-sm" id="bAdm" style="opacity:.55">Acesso do responsável</button>
+      </div>
+    </div>`);
+
+    ligar('.aba', 'click', e => telaLogin('', e.currentTarget.dataset.modo, porId('iEmail').value));
+    porId('bChamado').onclick = () => telaChamado();
+    porId('bAdm').onclick = () => telaLoginResponsavel();
+    porId('bEsqueci').onclick = async () => {
+      const email = porId('iEmail').value.trim().toLowerCase();
+      if (!email) return telaLogin('Informe o e-mail para receber o link de redefinição.', modo);
+      try { await Backend.recuperarSenha(email); } catch (e) { /* não confirmar existência do e-mail */ }
+      modal({
+        titulo: 'Redefinição de senha',
+        corpo: `<p>Se existir um acesso com este e-mail, você vai receber um link para definir uma nova senha. Verifique também a caixa de spam.</p>`,
+        acoes: `<button class="btn-primary" onclick="fecharModal()">Entendi</button>`
+      });
+    };
+
+    porId('fLogin').onsubmit = async ev => {
+      ev.preventDefault();
+      const b = porId('bEnviar'); b.disabled = true; b.textContent = 'Aguarde…';
+      const email = porId('iEmail').value.trim().toLowerCase();
+      const senha = porId('iSenha').value;
+      try {
+        if (modo === 'criar') {
+          if (senha !== porId('iSenha2').value) throw { code: 'senhas-diferentes' };
+          await Backend.criarAcesso(email, senha);
+        } else {
+          await Backend.entrar(email, senha);
+        }
+      } catch (e) {
+        b.disabled = false; b.textContent = modo === 'criar' ? 'Criar acesso' : 'Entrar';
+        telaLogin(msgErroAuth(e), modo, email);
+      }
+    };
+  }
+
+  /* Mesma página, mesmo endereço: o botão "Acesso do responsável" só troca
+     o formulário. Quem entra aqui e é administrador vê o painel aparecer
+     no lugar da tela do credor, sem sair do site. */
+  function telaLoginResponsavel(erro = '') {
+    render(`
+    <div style="max-width:400px;margin:10vh auto 0">
+      <div class="card card-pad stack">
+        <h1>Acesso do responsável</h1>
+        ${erro ? aviso(erro, 'bad') : ''}
+        <form id="fAdm" class="stack" autocomplete="on">
+          <div class="field"><label for="aEmail">E-mail</label>
+            <input id="aEmail" type="email" autocomplete="username" required></div>
+          <div class="field"><label for="aSenha">Senha</label>
+            <input id="aSenha" type="password" autocomplete="current-password" required></div>
+          <button class="btn-primary btn-block" type="submit" id="bEntrarAdm">Entrar</button>
+        </form>
+        <div class="center">
+          <button class="btn-ghost btn-sm" id="bVoltar">Voltar</button>
+        </div>
+      </div>
+    </div>`);
+    porId('bVoltar').onclick = () => telaLogin();
+    porId('fAdm').onsubmit = async ev => {
+      ev.preventDefault();
+      const b = porId('bEntrarAdm'); b.disabled = true; b.textContent = 'Aguarde…';
+      try { await Backend.entrar(porId('aEmail').value.trim().toLowerCase(), porId('aSenha').value); }
+      catch (e) {
+        b.disabled = false; b.textContent = 'Entrar';
+        telaLoginResponsavel('E-mail ou senha não conferem.');
+      }
+    };
+  }
+
+  function msgErroAuth(e) {
+    const c = e?.code || '';
+    if (c === 'senhas-diferentes') return 'As duas senhas não são iguais.';
+    if (c === 'auth/email-already-in-use') return 'Já existe um acesso com este e-mail. Use a aba "Entrar".';
+    if (c === 'auth/weak-password') return 'A senha precisa ter pelo menos 6 caracteres.';
+    if (c === 'auth/invalid-email') return 'E-mail inválido.';
+    if (c === 'auth/too-many-requests') return 'Muitas tentativas. Aguarde alguns minutos e tente novamente.';
+    if (c === 'auth/invalid-credential' || c === 'auth/wrong-password' || c === 'auth/user-not-found')
+      return 'E-mail ou senha não conferem. Se você ainda não tem acesso, use a aba "Criar acesso".';
+    return 'Não foi possível entrar. Tente novamente em instantes.';
+  }
+
+  /* ================================================================
+     2. CONFIRMAÇÃO DO E-MAIL
+     ================================================================ */
+  function telaVerificarEmail(msg = '') {
+    render(`
+    <div style="max-width:460px;margin:7vh auto 0">
+      <div class="card card-pad stack">
+        <h1>Confirme seu e-mail</h1>
+        <p class="muted">Enviamos um link para <strong>${escHtml(S.usuario.email)}</strong>.
+          Abra o e-mail, clique no link e volte aqui. Verifique também a caixa de spam.</p>
+        ${msg ? aviso(msg, 'warn') : ''}
+        <button class="btn-primary btn-block" id="bJa">Já confirmei, continuar</button>
+        <div class="row-between">
+          <button class="btn-ghost btn-sm" id="bReenviar">Reenviar o link</button>
+          <button class="btn-ghost btn-sm" id="bSairV">Sair</button>
+        </div>
+      </div>
+    </div>`);
+    porId('bSairV').onclick = sair;
+    porId('bReenviar').onclick = async () => {
+      porId('bReenviar').disabled = true;
+      try { await Backend.reenviarVerificacao(); } catch (e) {}
+      telaVerificarEmail('Link reenviado. Pode levar alguns minutos para chegar.');
+    };
+    porId('bJa').onclick = async () => {
+      const b = porId('bJa'); b.disabled = true; b.textContent = 'Conferindo…';
+      const ok = await Backend.conferirVerificacao().catch(() => false);
+      if (!ok) return telaVerificarEmail('Ainda não consta como confirmado. Clique no link do e-mail e tente de novo.');
+      S.usuario.emailVerificado = true;
+      iniciarSessao();
+    };
+  }
+
+  /* ================================================================
+     3. CHAMADO (quem não consegue entrar)
+     ================================================================ */
+  function telaChamado(deLogado = false) {
+    render(`
+    <div style="max-width:480px;margin:5vh auto 0">
+      <div class="card card-pad stack">
+        <div>
+          <h1>Abrir atendimento</h1>
+          <p class="muted tiny" style="margin-top:4px">Preencha os campos abaixo. O contato de retorno é feito pelo WhatsApp informado.</p>
+        </div>
+        <div id="chErro"></div>
+        <form id="fCh" class="stack">
+          <div class="field">
+            <label for="chNome">Nome completo</label>
+            <input id="chNome" required autocomplete="name" placeholder="Como está no documento">
+          </div>
+          <div class="field">
+            <label for="chCpf">CPF</label>
+            <input id="chCpf" required inputmode="numeric" placeholder="000.000.000-00" maxlength="18">
+          </div>
+          <div class="field">
+            <label for="chTel">Telefone com DDD</label>
+            <input id="chTel" required inputmode="tel" placeholder="(00) 00000-0000" maxlength="16">
+          </div>
+          <div class="field">
+            <label for="chMsg">O que aconteceu (opcional)</label>
+            <textarea id="chMsg" maxlength="500" placeholder="Ex: digitei meu CPF e não reconheceu"></textarea>
+          </div>
+          <button class="btn-primary btn-block" type="submit" id="bCh">Enviar</button>
+        </form>
+        <button class="btn-ghost btn-sm" id="bVoltar">Voltar</button>
+      </div>
+    </div>`);
+
+    porId('chCpf').addEventListener('input', e => { e.target.value = mascaraDoc(e.target.value); });
+    porId('chTel').addEventListener('input', e => { e.target.value = mascaraTel(e.target.value); });
+    porId('bVoltar').onclick = () => deLogado ? telaPainel() : (S.usuario ? telaIdentificacao() : telaLogin());
+
+    porId('fCh').onsubmit = async ev => {
+      ev.preventDefault();
+      const nome = porId('chNome').value.trim();
+      const cpf = soDigitos(porId('chCpf').value);
+      const tel = soDigitos(porId('chTel').value);
+      const erros = [];
+      if (nome.split(/\s+/).length < 2) erros.push('Informe o nome completo.');
+      if (!validaDoc(cpf)) erros.push('CPF inválido.');
+      if (tel.length < 10) erros.push('Telefone incompleto — inclua o DDD.');
+      if (erros.length) { porId('chErro').innerHTML = aviso(erros.join(' '), 'bad'); return; }
+      const b = porId('bCh'); b.disabled = true; b.textContent = 'Enviando…';
+      try {
+        await Backend.abrirChamado({
+          tipo: 'acesso', nomeCompleto: nome, cpf, telefone: tel,
+          email: S.usuario?.email || '', uidSolicitante: S.usuario?.uid || '',
+          mensagem: porId('chMsg').value.trim(), conferencia: {}
+        });
+        render(`<div style="max-width:480px;margin:8vh auto 0"><div class="card card-pad stack center">
+          <h1>Atendimento registrado</h1>
+          <p class="muted">Vamos entrar em contato pelo WhatsApp <strong>${escHtml(mascaraTel(tel))}</strong> para confirmar sua identidade e liberar o acesso.</p>
+          <button class="btn-primary" id="bFim">Voltar ao início</button></div></div>`);
+        porId('bFim').onclick = () => deLogado ? telaPainel() : (S.usuario ? telaIdentificacao() : telaLogin());
+      } catch (e) {
+        b.disabled = false; b.textContent = 'Enviar';
+        porId('chErro').innerHTML = aviso('Não foi possível registrar agora. Tente novamente em instantes.', 'bad');
+      }
+    };
+  }
+
+  /* ================================================================
+     4. IDENTIFICAÇÃO — CPF + 4 últimos dígitos do telefone
+        Se o login ainda não tem conta vinculada, é aqui que o vínculo
+        é criado. Nesse caso as tentativas são contadas no banco.
+     ================================================================ */
+  function telaIdentificacao(erro = '') {
+    const vincular = S.contas.length === 0;
+    const restantes = MAX_TENTATIVAS - S.tentativas;
+    const bloqueado = vincular ? restantes <= 0 : S.erradas >= 5;
+    render(`
+    <div style="max-width:440px;margin:6vh auto 0">
+      <div class="card card-pad stack">
+        <div>
+          <h1>Confirmação de identidade</h1>
+          <p class="muted tiny" style="margin-top:4px">${vincular
+            ? 'Informe o CPF e os 4 últimos dígitos do telefone que você tem cadastrado com a gente. É o que liga este acesso à sua posição.'
+            : 'Para exibir sua posição, confirme os dados abaixo.'}</p>
+        </div>
+        ${erro ? aviso(erro, 'bad') : ''}
+        ${bloqueado ? aviso(vincular
+          ? 'Você atingiu o limite de tentativas. Por segurança, abra um atendimento para confirmarmos seus dados por WhatsApp.'
+          : 'Muitas tentativas. Abra um atendimento para conferirmos seus dados.', 'warn') : ''}
+        ${!bloqueado && vincular && S.tentativas > 0 ? aviso('Tentativas restantes: ' + restantes + '.', 'warn') : ''}
+        <form id="fId" class="stack">
+          <div class="field">
+            <label for="idCpf">CPF ou CNPJ do titular</label>
+            <input id="idCpf" required inputmode="numeric" maxlength="18" placeholder="000.000.000-00" ${bloqueado ? 'disabled' : ''}>
+          </div>
+          <div class="field">
+            <label for="idTel">4 últimos dígitos do seu telefone</label>
+            <input id="idTel" required inputmode="numeric" maxlength="4" placeholder="0000" ${bloqueado ? 'disabled' : ''}>
+          </div>
+          <button class="btn-primary btn-block" type="submit" id="bId" ${bloqueado ? 'disabled' : ''}>Confirmar</button>
+        </form>
+        <div class="row-between">
+          <button class="btn-ghost btn-sm" id="bSair">Sair</button>
+          <button class="btn-ghost btn-sm" id="bCh2">Não consigo confirmar</button>
+        </div>
+      </div>
+    </div>`);
+    if (!bloqueado) {
+      porId('idCpf').addEventListener('input', e => { e.target.value = mascaraDoc(e.target.value); });
+      porId('idTel').addEventListener('input', e => { e.target.value = soDigitos(e.target.value).slice(0, 4); });
+    }
+    porId('bSair').onclick = sair;
+    porId('bCh2').onclick = () => telaChamado(false);
+    porId('fId').onsubmit = ev => { ev.preventDefault(); confirmarIdentidade(); };
+  }
+
+  async function confirmarIdentidade() {
+    const cpf = soDigitos(porId('idCpf').value);
+    const t4 = soDigitos(porId('idTel').value);
+    const b = porId('bId'); b.disabled = true; b.textContent = 'Conferindo…';
+
+    /* login já vinculado: a conferência é contra as contas que já são dele */
+    if (S.contas.length) {
+      const casam = S.contas.filter(c => c.cpf === cpf && [c.ult4, c.ult4Alt].includes(t4));
+      if (!casam.length) { S.erradas++; return telaIdentificacao('Dados não confirmados. Confira o CPF e os 4 dígitos.'); }
+      setIdent(cpf);
+      S.contasVisiveis = casam;
+      S.contaSel = casam[0].id;
+      await carregarPropostas();
+      return prosseguirParaTermos();
+    }
+
+    /* login novo: registra a tentativa e tenta criar o vínculo */
+    try {
+      S.tentativas = await Backend.registrarTentativa(S.usuario.uid, cpf, t4);
+      if (S.tentativas > MAX_TENTATIVAS) return telaIdentificacao();
+      const achados = await Backend.procurarPorChave(cpf, t4);
+      if (!achados.length) {
+        /* pode ser dado errado, mas também pode ser uma conta que já foi
+           reivindicada por outro acesso, ou uma negociação já concluída */
+        const r = await Backend.situacaoDaChave(cpf, t4).catch(() => ({ situacao: 'desconhecida' }));
+        const sit = r && r.situacao ? r.situacao : r;
+        if (sit === 'ja_vinculada') {
+          return telaIdentificacao('Estes dados já estão ligados ao acesso '
+            + (r.email ? r.email : 'criado antes')
+            + '. Saia e entre com esse e-mail e a senha que você usou. Se não lembra a senha, use "Esqueci minha senha"; se não é seu, abra um atendimento.');
+        }
+        if (sit === 'bloqueada') {
+          return telaIdentificacao('A consulta desta posição está encerrada no momento. Abra um atendimento e retornamos pelo WhatsApp.');
+        }
+        return telaIdentificacao('Não encontramos esses dados. Confira o CPF e os 4 últimos dígitos do telefone que você tem cadastrado com a gente. Se a sua negociação já foi concluída, a consulta é encerrada — nesse caso, abra um atendimento.');
+      }
+      for (const c of achados) {
+        await Backend.vincularConta(c.id, S.usuario.uid, S.usuario.email);
+      }
+      S.contas = await Backend.minhasContas(S.usuario.uid);
+      setIdent(cpf);
+      S.contasVisiveis = S.contas.filter(c => c.cpf === cpf);
+      S.contaSel = S.contasVisiveis[0]?.id;
+      await carregarPropostas();
+      prosseguirParaTermos();
+    } catch (e) {
+      console.error(e);
+      telaIdentificacao('Não foi possível confirmar agora. Tente novamente em instantes.');
+    }
+  }
+
+  /* ================================================================
+     5. TERMOS
+     ================================================================ */
+  function prosseguirParaTermos() {
+    if (!S.contasVisiveis.length) return telaSemAcesso();
+    if (S.contasVisiveis.some(c => !c.termosAceitos)) return telaTermos();
+    telaPainel();
+  }
+
+  function telaTermos() {
+    render(`
+    <div style="max-width:640px;margin:4vh auto 0">
+      <div class="card card-pad stack">
+        <h1>Termo de confirmação de leitura</h1>
+        <div class="termos-box">${escHtml(S.cfg.termos || '')}</div>
+        <label class="check"><input type="checkbox" id="ckTermos">
+          <span>Declaro que li e aceito integralmente o termo acima.</span></label>
+        <button class="btn-primary btn-block" id="bAceitar" disabled>Aceitar e continuar</button>
+        <button class="btn-ghost btn-sm" id="bSair2">Sair sem aceitar</button>
+      </div>
+    </div>`);
+    porId('ckTermos').onchange = e => { porId('bAceitar').disabled = !e.target.checked; };
+    porId('bSair2').onclick = sair;
+    porId('bAceitar').onclick = async () => {
+      const b = porId('bAceitar'); b.disabled = true; b.textContent = 'Registrando…';
+      const em = Backend.agora();
+      for (const c of S.contasVisiveis) {
+        if (c.termosAceitos) continue;
+        await Backend.atualizarConta(c.id, { termosAceitos: true, termosAceitosEm: em });
+        c.termosAceitos = true; c.termosAceitosEm = new Date().toISOString();
+      }
+      telaPainel();
+    };
+  }
+
+  /* ================================================================
+     6. PAINEL
+     ================================================================ */
+  function blocoValores(c) {
+    const neg = v => Number(v) < 0 ? ' neg' : '';
+    return `
+    <div class="valores">
+      <div class="valores-head row-between">
+        <div>
+          <div class="kicker">Posição do titular</div>
+          <div style="font-weight:660;margin-top:2px">${escHtml(c.nome)}</div>
+        </div>
+        <div class="right tiny muted">
+          ${c.contaLabel ? `<div><span class="tag tag-neutral">${escHtml(c.contaLabel)}</span></div>` : ''}
+          <div style="margin-top:4px">CPF ${escHtml(mascaraDoc(c.cpf))}</div>
+        </div>
+      </div>
+      <div class="linha-valor"><span class="rot">a) Valor aportado</span><span class="val">${fmtBRL(c.aportes)}</span></div>
+      <div class="linha-valor"><span class="rot">b) Valor sacado</span><span class="val">${fmtBRL(c.saques)}</span></div>
+      <div class="linha-valor"><span class="rot">c) Saldo nominal (a − b)</span><span class="val${neg(c.saldoNominal)}">${fmtBRL(c.saldoNominal)}</span></div>
+      <div class="linha-valor destaque">
+        <span class="rot">d) Saldo devedor final<br><span class="tiny">corrigido para ${escHtml(S.cfg.dataReferencia || '01/08/2026')}</span></span>
+        <span class="val">${fmtBRL(c.saldoDevedor)}</span>
+      </div>
+    </div>`;
+  }
+
+  const propostaAbertaDaConta = id => S.propostas.find(p => p.contaId === id && ['pendente', 'enviada'].includes(p.status));
+
+  function telaPainel() {
+    if (!S.contasVisiveis.length) return telaSemAcesso();
+    const c = S.contasVisiveis.find(x => x.id === S.contaSel) || S.contasVisiveis[0];
+    S.contaSel = c.id;
+    const aberta = propostaAbertaDaConta(c.id);
+    const combinada = S.propostas.find(p => p.contaId === c.id && p.dataPagamentoPrevista && ['aceita', 'paga'].includes(p.status));
+
+    render(`
+    <div class="row-between no-print" style="margin-bottom:14px">
+      <div class="tiny muted">${escHtml(S.usuario.email)}</div>
+      <div class="row">
+        <button class="btn-ghost btn-sm" onclick="window.print()">Imprimir</button>
+        <button class="btn-ghost btn-sm" id="bSair3">Sair</button>
+      </div>
+    </div>
+
+    ${S.contasVisiveis.length > 1 ? `
+    <div class="card card-pad no-print" style="margin-bottom:14px">
+      <label for="selConta">Você tem ${S.contasVisiveis.length} contas. Escolha qual quer ver:</label>
+      <select id="selConta">
+        ${S.contasVisiveis.map(x => `<option value="${x.id}" ${x.id === c.id ? 'selected' : ''}>${escHtml(x.contaLabel || x.nome)} — ${fmtBRL(x.saldoDevedor)}</option>`).join('')}
+      </select>
+    </div>` : ''}
+
+    ${blocoValores(c)}
+
+    ${combinada ? `<div style="margin-top:14px">${aviso('Data de pagamento combinada: ' + fmtData(combinada.dataPagamentoPrevista) + '.', 'ok')}</div>` : ''}
+
+    <div class="card card-pad no-print" style="margin-top:18px">
+      <h2>Simular e propor</h2>
+      <p class="muted tiny" style="margin-top:4px">Monte a condição que funciona para você. A proposta é registrada para análise e você recebe a resposta nesta página.</p>
+      ${aberta ? `<div style="margin-top:12px">${aviso(
+        aberta.origem === 'adm'
+          ? 'Existe uma proposta aguardando a sua resposta logo abaixo. Responda para poder enviar uma nova.'
+          : 'Sua proposta está em análise. Você poderá enviar outra depois que ela for respondida.', 'warn')}</div>` : `
+      <div class="abas" role="tablist" style="margin-top:14px">
+        <button class="aba" role="tab" data-aba="parcelamento" aria-selected="${S.aba === 'parcelamento'}">Parcelamento</button>
+        <button class="aba" role="tab" data-aba="quitacao" aria-selected="${S.aba === 'quitacao'}">Quitação à vista</button>
+      </div>
+      <div id="painelSim" style="margin-top:16px"></div>`}
+    </div>
+
+    <div class="card card-pad no-print" style="margin-top:14px">
+      <h2>Minhas propostas</h2>
+      <div id="listaProp" style="margin-top:12px"></div>
+    </div>
+
+    ${blocoMeusDados(c)}
+
+    <div class="row-between no-print" style="margin-top:18px">
+      <span class="tiny muted">Dúvida sobre os valores? Abra um atendimento.</span>
+      <button class="btn-ghost btn-sm" id="bCh3">Abrir atendimento</button>
+    </div>`);
+
+    porId('bSair3').onclick = sair;
+    porId('bCh3').onclick = () => telaChamado(true);
+    if (porId('bMeusDados')) porId('bMeusDados').onclick = () => telaDadosRecebimento(c, () => telaPainel());
+    if (porId('selConta')) porId('selConta').onchange = e => { S.contaSel = e.target.value; telaPainel(); };
+    if (!aberta) {
+      ligar('.aba', 'click', e => { S.aba = e.currentTarget.dataset.aba; telaPainel(); });
+      desenharSimulador(c);
+    }
+    desenharPropostas(c);
+  }
+
+  function telaSemAcesso() {
+    render(`<div style="max-width:470px;margin:7vh auto 0"><div class="card card-pad stack center">
+      <h1>Consulta encerrada</h1>
+      <p class="muted">Não há posição disponível para consulta com o acesso
+        <strong>${escHtml(S.usuario?.email || '')}</strong> neste momento.</p>
+      <button class="btn-primary btn-block" id="bSair4">Entrar com outro e-mail</button>
+      <button class="btn-block" id="bCh4">Abrir atendimento</button>
+      <p class="tiny muted" style="margin:0">Se você precisa de informações, abra um atendimento e vamos responder pelo WhatsApp.</p>
+    </div></div>`);
+    porId('bCh4').onclick = () => telaChamado(false);
+    porId('bSair4').onclick = sair;
+  }
+
+  /* ---------------- simulador ---------------- */
+  const maxParcelasDa = c => Number(c.maxParcelas || S.cfg.maxParcelas || 36);
+  const taxaDa = c => Number(c.taxaMensal ?? S.cfg.taxaPadrao ?? 0);
+
+  function desenharSimulador(c) {
+    const box = porId('painelSim');
+    if (!box) return;
+    const maxP = maxParcelasDa(c);
+
+    if (S.aba === 'parcelamento') {
+      box.innerHTML = `
+        <div class="field">
+          <label for="sQtd">Em quantas parcelas você aceita receber? (até ${maxP})</label>
+          <input id="sQtd" type="number" min="1" max="${maxP}" step="1" value="${Math.min(12, maxP)}">
+        </div>
+        <div id="sResult" style="margin-top:14px"></div>
+        <div class="field" style="margin-top:14px">
+          <label for="sObs">Observação (opcional, até 300 caracteres)</label>
+          <textarea id="sObs" maxlength="300" placeholder="Ex: prefiro receber a partir de novembro"></textarea>
+        </div>
+        <button class="btn-primary btn-block" id="bProp" style="margin-top:14px">Enviar esta proposta</button>`;
+      const atualizar = () => {
+        const n = Math.max(1, Math.min(maxP, parseInt(porId('sQtd').value || '1', 10)));
+        const r = simularParcelamento(c.saldoDevedor, taxaDa(c), n);
+        porId('sResult').innerHTML = `
+          <div class="valores">
+            <div class="linha-valor"><span class="rot">Número de parcelas</span><span class="val">${r.parcelas}</span></div>
+            <div class="linha-valor"><span class="rot">Valor de cada parcela</span><span class="val">${fmtBRL(r.valorParcela)}</span></div>
+            <div class="linha-valor"><span class="rot">Total a receber</span><span class="val">${fmtBRL(r.valorTotal)}</span></div>
+            <div class="linha-valor"><span class="rot">Em relação ao saldo devedor</span><span class="val">${fmtPct(r.percentual)}</span></div>
+          </div>`;
+        box._sim = { ...r, tipo: 'parcelamento' };
+      };
+      porId('sQtd').addEventListener('input', atualizar);
+      atualizar();
+      porId('bProp').onclick = () => confirmarProposta(c, box._sim, porId('sObs').value.trim());
+    } else {
+      box.innerHTML = `
+        <div class="field">
+          <label for="sVal">Quanto você aceita receber à vista, em reais?</label>
+          <input id="sVal" inputmode="decimal" placeholder="0,00">
+          <div class="help">Saldo devedor atual: ${fmtBRL(c.saldoDevedor)}</div>
+        </div>
+        <div id="sResult2" style="margin-top:14px"></div>
+        <div class="field" style="margin-top:14px">
+          <label for="sObs2">Observação (opcional, até 300 caracteres)</label>
+          <textarea id="sObs2" maxlength="300"></textarea>
+        </div>
+        <button class="btn-primary btn-block" id="bProp2" style="margin-top:14px" disabled>Enviar esta proposta</button>`;
+      const atualizar = () => {
+        const v = Number(soDigitos(porId('sVal').value)) / 100;
+        porId('sVal').value = v ? v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '';
+        const pct = c.saldoDevedor > 0 ? v / c.saldoDevedor : 0;
+        porId('sResult2').innerHTML = v > 0 ? `
+          <div class="valores">
+            <div class="linha-valor"><span class="rot">Valor proposto à vista</span><span class="val">${fmtBRL(v)}</span></div>
+            <div class="linha-valor"><span class="rot">Em relação ao saldo devedor</span><span class="val">${fmtPct(pct)}</span></div>
+          </div>
+          ${v > c.saldoDevedor ? aviso('O valor proposto está acima do saldo devedor. Confira antes de enviar.', 'warn') : ''}` : '';
+        porId('bProp2').disabled = !(v > 0);
+        box._sim = { tipo: 'quitacao', parcelas: 1, valorParcela: v, valorTotal: v, percentual: pct };
+      };
+      porId('sVal').addEventListener('input', atualizar);
+      atualizar();
+      porId('bProp2').onclick = () => confirmarProposta(c, box._sim, porId('sObs2').value.trim());
+    }
+  }
+
+  /* ================================================================
+     DADOS DE CONTATO E RECEBIMENTO
+
+     Pedidos uma única vez, na primeira proposta que o credor enviar.
+     Vêm preenchidos com o que já está no cadastro: ele só confere e
+     clica, ou corrige. Depois de confirmados, ficam num quadro no pé
+     da tela — e só ele mesmo pode alterar.
+     ================================================================ */
+  const TIPOS_PIX = [['cpf', 'CPF ou CNPJ'], ['email', 'E-mail'],
+    ['telefone', 'Telefone'], ['aleatoria', 'Chave aleatória']];
+
+  function temFormaDeReceber(d) {
+    const pix = soDigitos(d.pixChave || '').length > 0 || (d.pixChave || '').trim().length > 0;
+    const banco = (d.banco || '').trim() && (d.agencia || '').trim() && (d.contaBanco || '').trim();
+    return !!(pix || banco);
+  }
+
+  function telaDadosRecebimento(c, aoConcluir, erro = '') {
+    const d = {
+      whatsapp: c.whatsapp || c.telefone || '',
+      pixTipo: c.pixTipo || 'cpf',
+      pixChave: c.pixChave || '',
+      banco: c.banco || '', agencia: c.agencia || '',
+      contaBanco: c.contaBanco || '', tipoContaBanco: c.tipoContaBanco || 'corrente',
+      endereco: c.endereco || ''
+    };
+    modal({
+      titulo: c.dadosConfirmados ? 'Meus dados' : 'Confirme seus dados antes de enviar',
+      corpo: `
+        ${erro ? aviso(erro, 'bad') : ''}
+        <p class="muted tiny">Já preenchemos com o que temos no cadastro. Confira, corrija o que
+        estiver diferente e confirme. Estes dados são usados para falar com você e para pagar.</p>
+
+        <div class="field" style="margin-top:14px">
+          <label for="dWpp">WhatsApp <span class="tiny muted">(obrigatório)</span></label>
+          <input id="dWpp" inputmode="numeric" maxlength="16" value="${escHtml(mascaraTel(d.whatsapp))}">
+        </div>
+
+        <div class="note note-info" style="margin-top:16px">
+          A conta ou a chave Pix precisa ser <strong>de titularidade própria</strong>, ou seja,
+          estar no seu nome e no seu CPF. Não fazemos pagamento na conta de terceiros.
+        </div>
+
+        <h3 style="margin-top:16px;font-size:.95rem">Chave Pix</h3>
+        <div class="grid2" style="margin-top:8px">
+          <div class="field">
+            <label for="dPixTipo">Tipo da chave</label>
+            <select id="dPixTipo">
+              ${TIPOS_PIX.map(([v, r]) => `<option value="${v}" ${d.pixTipo === v ? 'selected' : ''}>${r}</option>`).join('')}
+            </select>
+          </div>
+          <div class="field">
+            <label for="dPix">Chave</label>
+            <input id="dPix" value="${escHtml(d.pixChave)}" placeholder="sua chave Pix">
+          </div>
+        </div>
+
+        <h3 style="margin-top:16px;font-size:.95rem">Conta bancária</h3>
+        <div class="field" style="margin-top:8px">
+          <label for="dBanco">Banco</label>
+          <input id="dBanco" value="${escHtml(d.banco)}" placeholder="Ex: Banco do Brasil">
+        </div>
+        <div class="grid2" style="margin-top:10px">
+          <div class="field"><label for="dAg">Agência</label>
+            <input id="dAg" value="${escHtml(d.agencia)}" placeholder="0000"></div>
+          <div class="field"><label for="dCt">Conta com dígito</label>
+            <input id="dCt" value="${escHtml(d.contaBanco)}" placeholder="00000-0"></div>
+        </div>
+        <div class="field" style="margin-top:10px">
+          <label for="dTipoCt">Tipo</label>
+          <select id="dTipoCt">
+            <option value="corrente" ${d.tipoContaBanco === 'corrente' ? 'selected' : ''}>Conta corrente</option>
+            <option value="poupanca" ${d.tipoContaBanco === 'poupanca' ? 'selected' : ''}>Conta poupança</option>
+          </select>
+        </div>
+        <p class="muted tiny" style="margin-top:8px">Pix ou conta bancária — basta uma das duas.
+        Se preencher as duas, melhor: você escolhe depois por onde prefere receber.</p>
+
+        <h3 style="margin-top:16px;font-size:.95rem">Endereço</h3>
+        <div class="field" style="margin-top:8px">
+          <label for="dEnd">Endereço completo <span class="tiny muted">(opcional)</span></label>
+          <textarea id="dEnd" maxlength="200" style="min-height:70px">${escHtml(d.endereco)}</textarea>
+        </div>`,
+      acoes: `<button id="dCancel">Cancelar</button>
+              <button class="btn-primary" id="dOk">Confirmar meus dados</button>`
+    });
+
+    porId('dWpp').addEventListener('input', e => { e.target.value = mascaraTel(e.target.value); });
+    porId('dCancel').onclick = fecharModal;
+    porId('dOk').onclick = async () => {
+      const novo = {
+        whatsapp: soDigitos(porId('dWpp').value),
+        pixTipo: porId('dPixTipo').value,
+        pixChave: porId('dPix').value.trim(),
+        banco: porId('dBanco').value.trim(),
+        agencia: porId('dAg').value.trim(),
+        contaBanco: porId('dCt').value.trim(),
+        tipoContaBanco: porId('dTipoCt').value,
+        endereco: porId('dEnd').value.trim()
+      };
+      if (novo.whatsapp.length < 10)
+        return telaDadosRecebimento({ ...c, ...novo }, aoConcluir,
+          'Informe o WhatsApp com DDD, ex: (11) 99999-9999.');
+      if (!temFormaDeReceber(novo))
+        return telaDadosRecebimento({ ...c, ...novo }, aoConcluir,
+          'Informe pelo menos uma forma de receber: a chave Pix ou os dados da conta bancária.');
+
+      const b = porId('dOk');
+      b.disabled = true; b.textContent = 'Salvando…';
+      const marca = {
+        ...novo, telefoneConfirmado: true,
+        dadosConfirmados: true, dadosConfirmadosEm: new Date().toISOString()
+      };
+      try {
+        await Backend.atualizarConta(c.id, marca);
+      } catch (e) {
+        console.error(e);
+        b.disabled = false; b.textContent = 'Confirmar meus dados';
+        return telaDadosRecebimento({ ...c, ...novo }, aoConcluir, Backend.explicaErro(e));
+      }
+      fecharModal();
+      await recarregar().catch(() => {});
+      /* usa o que acabou de ser gravado, não depende de a releitura achar a conta */
+      const atual = { ...(S.contasVisiveis.find(x => x.id === c.id) || c), ...marca };
+      if (aoConcluir) aoConcluir(atual); else telaPainel();
+    };
+  }
+
+  function blocoMeusDados(c) {
+    if (!c.dadosConfirmados) return '';
+    const pixRot = (TIPOS_PIX.find(([v]) => v === c.pixTipo) || ['', 'Chave'])[1];
+    const linha = (r, v) => v ? `<div class="linha-valor"><span class="rot">${r}</span><span class="val" style="font-weight:600">${escHtml(v)}</span></div>` : '';
+    const banco = c.banco
+      ? `${c.banco} · Ag ${c.agencia} · ${c.tipoContaBanco === 'poupanca' ? 'Poupança' : 'C/C'} ${c.contaBanco}`
+      : '';
+    return `
+    <div class="card card-pad" style="margin-top:14px">
+      <div class="row-between">
+        <h2>Meus dados</h2>
+        <button class="btn-ghost btn-sm no-print" id="bMeusDados">Alterar</button>
+      </div>
+      <p class="muted tiny" style="margin-top:4px">Confirmados em ${fmtData(c.dadosConfirmadosEm)}.
+      Só você pode alterar estes dados.</p>
+      <div class="valores" style="margin-top:12px">
+        ${linha('WhatsApp', mascaraTel(c.whatsapp || c.telefone))}
+        ${linha('Pix — ' + pixRot, c.pixChave)}
+        ${linha('Conta bancária', banco)}
+        ${linha('Endereço', c.endereco)}
+      </div>
+    </div>`;
+  }
+
+  function confirmarProposta(c, sim, obs) {
+    if (!sim) return;
+    /* primeira proposta: confere contato e forma de recebimento antes */
+    if (!c.dadosConfirmados)
+      return telaDadosRecebimento(c, atual => confirmarProposta(atual, sim, obs));
+    const resumo = sim.tipo === 'parcelamento'
+      ? `<p><strong>${sim.parcelas} parcelas de ${fmtBRL(sim.valorParcela)}</strong><br>
+         Total ${fmtBRL(sim.valorTotal)} — ${fmtPct(sim.percentual)} do saldo devedor.</p>`
+      : `<p><strong>${fmtBRL(sim.valorTotal)} à vista</strong><br>
+         ${fmtPct(sim.percentual)} do saldo devedor.</p>`;
+    modal({
+      titulo: 'Confirmar envio da proposta',
+      corpo: `${resumo}${obs ? `<p class="muted tiny">Observação: ${escHtml(obs)}</p>` : ''}
+        <p class="muted tiny">Enquanto esta proposta não for respondida, você não poderá enviar outra para esta conta.</p>
+        <div id="mErro"></div>`,
+      acoes: `<button id="mCancel">Cancelar</button><button class="btn-primary" id="mOk">Confirmar envio</button>`
+    });
+    porId('mCancel').onclick = fecharModal;
+    porId('mOk').onclick = async () => {
+      const b = porId('mOk');
+      b.disabled = true; b.textContent = 'Enviando…';
+      let id;
+      try {
+        id = await Backend.criarProposta({
+          contaId: c.id, nome: c.nome, origem: 'credor',
+          tipo: sim.tipo, parcelas: sim.parcelas, valorParcela: sim.valorParcela,
+          valorTotal: sim.valorTotal, percentual: sim.percentual, obs, status: 'pendente',
+          respostaAdm: null, respostaCredor: null, prioridade: c.prioridade || 0,
+          saldoBase: c.saldoDevedor, dataPagamentoPrevista: null, respondidoEm: null,
+          historico: [{ quem: 'credor', acao: 'criou', texto: obs || '', em: new Date().toISOString() }]
+        });
+        await Backend.atualizarConta(c.id, { propostaAbertaId: id });
+      } catch (e) {
+        console.error(e);
+        b.disabled = false; b.textContent = 'Confirmar envio';
+        porId('mErro').innerHTML = aviso(Backend.explicaErro(e), 'bad');
+        return;
+      }
+      fecharModal();
+      await recarregar(); telaPainel();
+      modal({
+        titulo: 'Proposta registrada',
+        corpo: `<p>Sua proposta foi registrada para análise. A resposta aparece nesta página.</p>`,
+        acoes: `<button class="btn-primary" onclick="fecharModal()">Fechar</button>`
+      });
+    };
+  }
+
+  /* ---------------- lista de propostas do credor ---------------- */
+  const ROTULO_STATUS = {
+    pendente: ['Em análise', 'tag-warn'],
+    enviada: ['Aguardando sua resposta', 'tag-info'],
+    aceita: ['Aceita', 'tag-ok'],
+    recusada: ['Não aceita', 'tag-bad'],
+    paga: ['Paga', 'tag-neutral']
+  };
+
+  function desenharPropostas(c) {
+    const box = porId('listaProp');
+    if (!box) return;
+    const minhas = S.propostas.filter(p => p.contaId === c.id);
+    if (!minhas.length) { box.innerHTML = `<p class="muted tiny">Nenhuma proposta registrada nesta conta.</p>`; return; }
+
+    box.innerHTML = minhas.map(p => {
+      const [rot, cls] = ROTULO_STATUS[p.status] || [p.status, 'tag-neutral'];
+      const desc = p.tipo === 'parcelamento'
+        ? `${p.parcelas} parcelas de ${fmtBRL(p.valorParcela)} — total ${fmtBRL(p.valorTotal)}`
+        : `${fmtBRL(p.valorTotal)} à vista`;
+      return `<div class="card card-pad" style="margin-bottom:10px">
+        <div class="row-between">
+          <div>
+            <div class="tiny muted">${p.origem === 'adm' ? 'Proposta recebida' : 'Proposta enviada por você'} • ${fmtData(p.criadoEm)}</div>
+            <div style="font-weight:620;margin-top:3px">${escHtml(desc)}</div>
+            <div class="tiny muted">${fmtPct(p.percentual)} do saldo devedor${p.obs ? ' • ' + escHtml(p.obs) : ''}</div>
+          </div>
+          <span class="tag ${cls}">${rot}</span>
+        </div>
+        ${p.respostaAdm ? `<div style="margin-top:10px">${aviso('Resposta: ' + p.respostaAdm, p.status === 'recusada' ? 'bad' : 'ok')}</div>` : ''}
+        ${p.dataPagamentoPrevista && ['aceita', 'paga'].includes(p.status) ? `<div style="margin-top:10px" class="tiny muted">Data de pagamento combinada: <strong>${fmtData(p.dataPagamentoPrevista)}</strong></div>` : ''}
+        ${p.status === 'enviada' ? `<div class="row" style="margin-top:12px">
+            <button class="btn-ok btn-sm" data-aceita="${p.id}">Aceitar</button>
+            <button class="btn-bad btn-sm" data-recusa="${p.id}">Não aceitar</button>
+          </div>` : ''}
+        ${p.status === 'aceita' && p.origem === 'adm' && !c.telefoneConfirmado ? `<div style="margin-top:12px">
+            <button class="btn-primary btn-sm" data-wpp="${p.id}">Confirmar meu WhatsApp</button></div>` : ''}
+        ${p.status === 'recusada' && p.origem === 'adm' ? `<div class="row" style="margin-top:12px">
+            <button class="btn-sm" data-contra="${p.id}">Enviar contraproposta</button></div>` : ''}
+      </div>`;
+    }).join('');
+
+    ligar('[data-aceita]', 'click', e => aceitarPropostaAdm(c, e.currentTarget.dataset.aceita));
+    ligar('[data-recusa]', 'click', e => recusarPropostaAdm(c, e.currentTarget.dataset.recusa));
+    ligar('[data-wpp]', 'click', () => telaConfirmaWhats(c));
+    ligar('[data-contra]', 'click', () => { S.aba = 'parcelamento'; telaPainel(); });
+  }
+
+  function aceitarPropostaAdm(c, id) {
+    const p = S.propostas.find(x => x.id === id);
+    modal({
+      titulo: 'Aceitar proposta',
+      corpo: `<p>Você confirma o aceite de <strong>${p.tipo === 'parcelamento'
+        ? `${p.parcelas} parcelas de ${fmtBRL(p.valorParcela)}`
+        : `${fmtBRL(p.valorTotal)} à vista`}</strong>?</p>
+        <p class="muted tiny">Depois do aceite, o contato para os detalhes é feito por WhatsApp.</p>`,
+      acoes: `<button id="mCancel">Cancelar</button><button class="btn-ok" id="mOk">Aceito</button>`
+    });
+    porId('mCancel').onclick = fecharModal;
+    porId('mOk').onclick = async () => {
+      porId('mOk').disabled = true;
+      await Backend.atualizarProposta(id, {
+        status: 'aceita', respondidoEm: Backend.agora(),
+        historico: [...(p.historico || []), { quem: 'credor', acao: 'aceitou', texto: '', em: new Date().toISOString() }]
+      });
+      await Backend.atualizarConta(c.id, { propostaAbertaId: null });
+      fecharModal(); await recarregar(); telaPainel();
+      telaConfirmaWhats(S.contasVisiveis.find(x => x.id === c.id) || c);
+    };
+  }
+
+  function recusarPropostaAdm(c, id) {
+    const p = S.propostas.find(x => x.id === id);
+    modal({
+      titulo: 'Não aceitar a proposta',
+      corpo: `<div class="field"><label for="mJust">Justificativa curta (até 200 caracteres)</label>
+        <textarea id="mJust" maxlength="200" placeholder="Ex: preciso de um prazo menor"></textarea></div>
+        <p class="muted tiny">Depois disso você poderá enviar uma contraproposta.</p>`,
+      acoes: `<button id="mCancel">Cancelar</button><button class="btn-bad" id="mOk">Registrar recusa</button>`
+    });
+    porId('mCancel').onclick = fecharModal;
+    porId('mOk').onclick = async () => {
+      const just = porId('mJust').value.trim();
+      if (!just) return porId('mJust').focus();
+      porId('mOk').disabled = true;
+      await Backend.atualizarProposta(id, {
+        status: 'recusada', respostaCredor: just, respondidoEm: Backend.agora(),
+        historico: [...(p.historico || []), { quem: 'credor', acao: 'recusou', texto: just, em: new Date().toISOString() }]
+      });
+      await Backend.atualizarConta(c.id, { propostaAbertaId: null });
+      fecharModal(); await recarregar(); telaPainel();
+    };
+  }
+
+  function telaConfirmaWhats(c) {
+    const tel = mascaraTel(c.telefone);
+    modal({
+      titulo: 'Contato por WhatsApp',
+      corpo: `<p>O contato para acertar os detalhes será feito por WhatsApp, neste número:</p>
+        <p style="font-size:1.2rem;font-weight:700" class="mono">${escHtml(tel)}</p>
+        <p class="muted tiny">Confirme se este número está correto e é o seu.</p>`,
+      acoes: `<button id="mErrado">Este número está errado</button>
+              <button class="btn-ok" id="mOk">Confirmo, é o meu número</button>`
+    });
+    porId('mOk').onclick = async () => {
+      porId('mOk').disabled = true;
+      await Backend.atualizarConta(c.id, { telefoneConfirmado: true });
+      fecharModal(); await recarregar(); telaPainel();
+      modal({
+        titulo: 'Número confirmado',
+        corpo: `<p>Obrigado. Vamos entrar em contato por WhatsApp em <strong>${escHtml(tel)}</strong>.</p>`,
+        acoes: `<button class="btn-primary" onclick="fecharModal()">Fechar</button>`
+      });
+    };
+    porId('mErrado').onclick = () => { fecharModal(); telaChamado(true); };
+  }
+
+  /* ================================================================
+     ciclo de vida
+     ================================================================ */
+  async function carregarPropostas() {
+    const listas = await Promise.all(S.contasVisiveis.map(c => Backend.propostasDaConta(c.id)));
+    S.propostas = listas.flat();
+  }
+
+  async function recarregar() {
+    S.contas = await Backend.minhasContas(S.usuario.uid);
+    const cpf = identOk();
+    S.contasVisiveis = cpf ? S.contas.filter(c => c.cpf === cpf) : [];
+    await carregarPropostas();
+  }
+
+  async function sair() {
+    limpaIdent();
+    await Backend.sair();
+    S.usuario = null; S.contas = []; S.contasVisiveis = []; S.propostas = [];
+    S.tentativas = 0; S.erradas = 0;
+    telaLogin();
+  }
+
+  async function iniciarSessao() {
+    render(`<div class="card card-pad center muted">Carregando…</div>`);
+    if (S.cfg.exigirEmailVerificado && !S.usuario.emailVerificado) return telaVerificarEmail();
+    try {
+      S.contas = await Backend.minhasContas(S.usuario.uid);
+      if (!S.contas.length) {
+        S.tentativas = Number((await Backend.lerTentativas(S.usuario.uid)).n || 0);
+      }
+    } catch (e) {
+      console.error(e);
+      return render(`<div class="card card-pad stack">${aviso('Não foi possível carregar seus dados agora. Recarregue a página em instantes.', 'bad')}
+        <button class="btn-ghost btn-sm" onclick="sair()">Sair</button></div>`);
+    }
+    const cpf = identOk();
+    if (cpf && S.contas.length) {
+      S.contasVisiveis = S.contas.filter(c => c.cpf === cpf);
+      if (S.contasVisiveis.length) {
+        S.contaSel = S.contasVisiveis[0].id;
+        await carregarPropostas();
+        return prosseguirParaTermos();
+      }
+    }
+    limpaIdent();
+    S.erradas = 0;
+    telaIdentificacao();
+  }
+
+  async function iniciar() {
+    S.cfg = await Backend.lerConfig();
+    if (S.cfg.tituloAba) document.title = S.cfg.tituloAba;
+
+    Backend.aoMudarUsuario(async u => {
+      if (!u) { limpaIdent(); return telaLogin(); }
+      S.usuario = u;
+      /* o mesmo formulário serve para os dois: se quem entrou for o
+         responsável, a própria página troca para o painel — sem sair daqui */
+      if (await Backend.ehAdmin(u.uid).catch(() => false)) return Painel.abrir(u);
+      iniciarSessao();
+    });
+  }
+
+  /* handlers usados de dentro do HTML gerado */
+  window.fecharModal = fecharModal;
+  window.sair = sair;
+
+  return { iniciar, telaLogin };
+})();
+
+</script>
+<script>
+const Painel = (function () {
+  /* ==================================================================
+     Painel de administração.
+     ================================================================== */
+  const S = { usuario: null, contas: [], propostas: [], chamados: [], tentativas: [], cfg: null, aba: 'painel',
+    cal: { indice: null, parcelas: 12, recorte: 'todos' },
+    cred: { situacao: 'todos', faixa: 'todas' },
+              filtro: 'nao_respondidas', busca: '', ordem: 'antigas', selLote: new Set() };
+  const el = document.getElementById('appAdm');
+  const elTopo = document.getElementById('admTopo');
+  const elModais = document.getElementById('modais');
+  const porId = id => document.getElementById(id);
+  const render = h => { el.innerHTML = h; };
+  const ligar = (sel, ev, fn) => el.querySelectorAll(sel).forEach(n => n.addEventListener(ev, fn));
+  const aviso = (t, k = 'info') => `<div class="note note-${k}">${escHtml(t)}</div>`;
+
+  function modal({ titulo, corpo, acoes, largura }) {
+    elModais.innerHTML = `<div class="modal-bg" id="mbg"><div class="modal" role="dialog" aria-modal="true" ${largura ? `style="max-width:${largura}"` : ''}>
+      <div class="modal-head"><h2>${escHtml(titulo)}</h2><button class="btn-ghost btn-sm" id="mFechar">✕</button></div>
+      <div class="modal-body">${corpo}</div><div class="modal-foot">${acoes}</div></div></div>`;
+    porId('mFechar').onclick = fecharModal;
+    porId('mbg').addEventListener('click', e => { if (e.target.id === 'mbg') fecharModal(); });
+  }
+  const fecharModal = () => { elModais.innerHTML = ''; };
+
+  /* ---------------- derivados ---------------- */
+  const conta = id => S.contas.find(c => c.id === id);
+  const propsDaConta = id => S.propostas.filter(p => p.contaId === id);
+
+  function estadoDaConta(c) {
+    if (c.pago) return 'paga';
+    const ps = propsDaConta(c.id);
+    if (!ps.length) return 'nao';
+    if (ps.some(p => ['pendente', 'enviada'].includes(p.status))) return 'neg';
+    if (ps.some(p => p.status === 'aceita')) return 'ace';
+    return 'sem';
+  }
+  const ROT_ESTADO = { nao: ['Não iniciada', 'var(--st-nao)'], neg: ['Em negociação', 'var(--st-neg)'],
+    ace: ['Aceita', 'var(--st-ace)'], paga: ['Paga', 'var(--st-pag)'], sem: ['Sem acordo', 'var(--st-sem)'] };
+
+  const ROT_PROP = {
+    pendente: ['Aguardando você', 'tag-warn'], enviada: ['Aguardando o credor', 'tag-info'],
+    aceita: ['Aceita', 'tag-ok'], recusada: ['Recusada', 'tag-bad'], paga: ['Paga', 'tag-neutral']
+  };
+  function descProp(p) {
+    return p.tipo === 'parcelamento'
+      ? `${p.parcelas}× ${fmtBRL(p.valorParcela)}`
+      : `${fmtBRL(p.valorTotal)} à vista`;
+  }
+  function prioBadge(n) {
+    const pr = (S.cfg.prioridades || [])[Number(n || 0)];
+    if (!pr) return '<span class="tiny muted">—</span>';
+    return `<span class="prio" style="color:${pr.cor}"><i style="background:${pr.cor}"></i>${escHtml(pr.nome)}</span>`;
+  }
+  function taxaDa(c) { return Number(c.taxaMensal ?? S.cfg.taxaPadrao ?? 0); }
+  function maxParcelasDa(c) { return Number(c.maxParcelas || S.cfg.maxParcelas || 36); }
+
+  /* ================================================================
+     PAINEL
+     ================================================================ */
+  function abaPainel() {
+    const ativas = S.contas;
+    const total = ativas.reduce((s, c) => s + Number(c.saldoDevedor || 0), 0);
+    const grupos = { nao: [], neg: [], ace: [], paga: [], sem: [] };
+    ativas.forEach(c => grupos[estadoDaConta(c)].push(c));
+    const soma = k => grupos[k].reduce((s, c) => s + Number(c.saldoDevedor || 0), 0);
+    const emAberto = total - soma('paga');
+    const chAbertos = S.chamados.filter(c => c.status !== 'resolvido').length;
+    const semResposta = S.propostas.filter(p => p.status === 'pendente').length;
+    const aguardCredor = S.propostas.filter(p => p.status === 'enviada').length;
+    const pendCad = S.contas.reduce((s, c) => s + (c.pendencias || []).length, 0);
+    const travados = S.tentativas.filter(t => Number(t.n || 0) >= MAX_TENTATIVAS).length;
+    const reciboPend = S.contas.filter(c => c.pago && !c.recibo).length;
+    const maisAntiga = S.propostas.filter(p => p.status === 'pendente')
+      .sort((a, b) => (msParaData(a.ultimaInteracaoEm) || 0) - (msParaData(b.ultimaInteracaoEm) || 0))[0];
+
+    const ordem = ['nao', 'neg', 'ace', 'paga', 'sem'];
+    const n = ativas.length || 1;
+
+    render(`
+    <div class="stack">
+      <div class="card card-pad">
+        <div class="dinheiro">
+          <div>
+            <div class="t-rot">Dívida total cadastrada</div>
+            <div class="valor-grande">${fmtBRL(total)}</div>
+            <div class="t-sub">${ativas.length} contas na base</div>
+          </div>
+          <div class="divisor"></div>
+          <div>
+            <div class="t-rot">Ainda em aberto</div>
+            <div class="valor-grande">${fmtBRL(emAberto)}</div>
+            <div class="t-sub">${fmtPct(total ? emAberto / total : 0, 1)} do total · já quitado ${fmtBRL(soma('paga'))}</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="tiles">
+        ${[['nao', 'Faltam negociar'], ['neg', 'Em negociação'], ['ace', 'Proposta aceita'], ['paga', 'Pagas']]
+          .map(([k, rot]) => `<div class="tile">
+            <div class="t-rot"><span class="ponto" style="background:${ROT_ESTADO[k][1]}"></span>${rot}</div>
+            <div class="t-val">${grupos[k].length} <span class="t-de">de ${ativas.length}</span></div>
+            <div class="t-sub">${fmtBRL(soma(k))}</div>
+          </div>`).join('')}
+      </div>
+
+      <div class="card card-pad">
+        <h2>Situação das ${ativas.length} contas</h2>
+        <div class="barra" style="margin-top:12px" role="img"
+          aria-label="${ordem.map(k => `${ROT_ESTADO[k][0]}: ${grupos[k].length}`).join(', ')}">
+          ${ordem.filter(k => grupos[k].length).map((k, i, arr) => `<i style="width:${grupos[k].length / n * 100}%;
+            background:${ROT_ESTADO[k][1]};${i < arr.length - 1 ? 'border-right:2px solid var(--surface)' : ''}"></i>`).join('')}
+        </div>
+        <div class="legenda">
+          ${ordem.map(k => `<span><b style="background:${ROT_ESTADO[k][1]}"></b>${ROT_ESTADO[k][0]}
+            <strong class="num">${grupos[k].length}</strong>
+            <span class="muted">(${fmtBRL(soma(k))})</span></span>`).join('')}
+        </div>
+      </div>
+
+      <div class="grid2">
+        <div class="card card-pad">
+          <h2>Precisa de você</h2>
+          <dl class="kv" style="margin-top:12px">
+            <dt>Propostas que você não respondeu</dt><dd>${semResposta}</dd>
+            <dt>Propostas suas aguardando o credor</dt><dd>${aguardCredor}</dd>
+            <dt>Chamados abertos</dt><dd>${chAbertos}</dd>
+            <dt>Logins travados na identificação</dt><dd>${travados}</dd>
+            <dt>Recibos de quitação pendentes</dt><dd>${reciboPend}</dd>
+            <dt>Erros de cadastro em aberto</dt><dd>${pendCad}</dd>
+          </dl>
+          ${maisAntiga ? `<div style="margin-top:14px">${aviso(
+            `Proposta mais antiga sem resposta: ${maisAntiga.nome} — ${diasDesde(maisAntiga.ultimaInteracaoEm)} dias parada.`,
+            diasDesde(maisAntiga.ultimaInteracaoEm) > 15 ? 'bad' : 'warn')}</div>` : ''}
+          <button class="btn-primary btn-sm" style="margin-top:14px" id="bIrProp">Abrir a fila de propostas</button>
+        </div>
+        <div class="card card-pad">
+          <h2>Maiores valores em aberto</h2>
+          <div class="tbl-wrap" style="margin-top:12px;border:0">
+            <table><tbody>
+            ${ativas.filter(c => !c.pago).sort((a, b) => b.saldoDevedor - a.saldoDevedor).slice(0, 8).map(c => {
+              const e = estadoDaConta(c);
+              return `<tr><td>${escHtml(c.nome)}${c.contaLabel ? ` <span class="tiny muted">${escHtml(c.contaLabel)}</span>` : ''}</td>
+                <td><span class="prio" style="color:${ROT_ESTADO[e][1]}"><i style="background:${ROT_ESTADO[e][1]}"></i>${ROT_ESTADO[e][0]}</span></td>
+                <td class="num">${fmtBRL(c.saldoDevedor)}</td></tr>`;
+            }).join('')}
+            </tbody></table>
+          </div>
+        </div>
+      </div>
+    </div>`);
+    porId('bIrProp').onclick = () => irPara('propostas');
+  }
+
+  /* ================================================================
+     PROPOSTAS
+     ================================================================ */
+  const FILTROS = [
+    ['nao_respondidas', 'Não respondi', p => p.status === 'pendente'],
+    ['enviadas', 'Enviei, aguardo', p => p.status === 'enviada'],
+    ['contra', 'Contraproposta', p => p.origem === 'credor' && p.status === 'pendente' && p.contraDe],
+    ['aceitas', 'Aceitas', p => p.status === 'aceita'],
+    ['recusadas', 'Recusadas', p => p.status === 'recusada'],
+    ['pagas', 'Pagas', p => p.status === 'paga'],
+    ['todas', 'Todas', () => true]
+  ];
+
+  function abaPropostas() {
+    const f = FILTROS.find(x => x[0] === S.filtro) || FILTROS[0];
+    let lista = S.propostas.filter(f[2]);
+    if (S.busca) {
+      const b = S.busca.toLowerCase();
+      lista = lista.filter(p => (p.nome || '').toLowerCase().includes(b));
+    }
+    lista.sort((a, b) => S.ordem === 'antigas'
+      ? (msParaData(a.ultimaInteracaoEm) || 0) - (msParaData(b.ultimaInteracaoEm) || 0)
+      : Number(b.valorTotal || 0) - Number(a.valorTotal || 0));
+
+    render(`
+    <div class="stack">
+      <div class="card card-pad">
+        <div class="row-between">
+          <div class="filtros">
+            ${FILTROS.map(x => `<button class="chip" data-f="${x[0]}" aria-pressed="${x[0] === S.filtro}">
+              ${x[1]}<b>${S.propostas.filter(x[2]).length}</b></button>`).join('')}
+          </div>
+          <button class="btn-primary btn-sm" id="bNovaProp">Enviar proposta</button>
+        </div>
+        <div class="row" style="margin-top:12px">
+          <input id="iBusca" placeholder="Buscar por nome" value="${escHtml(S.busca)}" style="max-width:280px">
+          <select id="iOrdem" style="max-width:220px">
+            <option value="antigas" ${S.ordem === 'antigas' ? 'selected' : ''}>Mais antigas primeiro</option>
+            <option value="valor" ${S.ordem === 'valor' ? 'selected' : ''}>Maior valor primeiro</option>
+          </select>
+        </div>
+      </div>
+
+      ${lista.length ? `<div class="tbl-wrap"><table>
+        <thead><tr>
+          <th>Prioridade</th><th>Nome</th><th>Proposta</th><th class="num">Valor</th>
+          <th class="num">% do saldo</th><th class="num">Parada há</th><th>Situação</th><th>Origem</th><th></th>
+        </tr></thead>
+        <tbody>${lista.map(p => {
+          const dias = diasDesde(p.ultimaInteracaoEm);
+          const [rot, cls] = ROT_PROP[p.status] || [p.status, 'tag-neutral'];
+          const c = conta(p.contaId) || {};
+          return `<tr>
+            <td>${prioBadge(c.prioridade)}</td>
+            <td><strong>${escHtml(p.nome || '')}</strong>${c.contaLabel ? `<br><span class="tiny muted">${escHtml(c.contaLabel)}</span>` : ''}</td>
+            <td>${p.tipo === 'parcelamento' ? 'Parcelamento' : 'Quitação'}<br><span class="tiny muted">${escHtml(descProp(p))}</span></td>
+            <td class="num">${fmtBRL(p.valorTotal)}</td>
+            <td class="num">${fmtPct(p.percentual, 1)}</td>
+            <td class="num">${dias === null ? '—' : `<span class="${dias > 15 && p.status === 'pendente' ? 'tag tag-bad' : ''}">${dias}d</span>`}</td>
+            <td><span class="tag ${cls}">${rot}</span></td>
+            <td class="tiny muted">${p.origem === 'adm' ? 'Você' : 'Credor'}</td>
+            <td><button class="btn-sm" data-abrir="${p.id}">Abrir</button></td>
+          </tr>`;
+        }).join('')}</tbody></table></div>`
+        : `<div class="card card-pad muted center">Nenhuma proposta neste filtro.</div>`}
+    </div>`);
+
+    ligar('.chip', 'click', e => { S.filtro = e.currentTarget.dataset.f; abaPropostas(); });
+    porId('iBusca').oninput = e => {
+      const v = e.target.value, pos = e.target.selectionStart;
+      S.busca = v; abaPropostas();
+      const n = porId('iBusca');
+      n.value = v; n.focus(); n.setSelectionRange(pos, pos);
+    };
+    porId('iOrdem').onchange = e => { S.ordem = e.target.value; abaPropostas(); };
+    porId('bNovaProp').onclick = () => modalNovaProposta();
+    ligar('[data-abrir]', 'click', e => modalProposta(e.currentTarget.dataset.abrir));
+  }
+
+  /* ---------------- detalhe da proposta ---------------- */
+  /* dados que o credor confirmou ao enviar a primeira proposta.
+     Só ele altera — aqui é leitura. */
+  const ROT_PIX = { cpf: 'CPF/CNPJ', email: 'E-mail', telefone: 'Telefone', aleatoria: 'Aleatória' };
+  function blocoDadosRecebimento(c) {
+    if (!c.dadosConfirmados) {
+      return `<div class="note note-warn" style="margin-top:12px">O credor ainda não confirmou
+        os dados de contato e recebimento. Isso acontece quando ele envia a primeira proposta.</div>`;
+    }
+    const banco = c.banco
+      ? `${escHtml(c.banco)} · Ag ${escHtml(c.agencia)} · ${c.tipoContaBanco === 'poupanca' ? 'Poupança' : 'C/C'} ${escHtml(c.contaBanco)}`
+      : '<span class="muted">não informou</span>';
+    return `
+      <dl class="kv" style="margin-top:12px">
+        <dt>WhatsApp</dt><dd>${escHtml(mascaraTel(c.whatsapp || c.telefone))}</dd>
+        <dt>Pix (${ROT_PIX[c.pixTipo] || '—'})</dt><dd>${c.pixChave ? escHtml(c.pixChave) : '<span class="muted">não informou</span>'}</dd>
+        <dt>Conta bancária</dt><dd>${banco}</dd>
+        <dt>Endereço</dt><dd>${c.endereco ? escHtml(c.endereco) : '<span class="muted">não informou</span>'}</dd>
+        <dt>Confirmado em</dt><dd>${fmtDataHora(c.dadosConfirmadosEm)}</dd>
+      </dl>
+      <p class="tiny muted" style="margin-top:6px">Confirmado pelo próprio credor. Só ele pode alterar.</p>`;
+  }
+
+  function modalProposta(id) {
+    const p = S.propostas.find(x => x.id === id);
+    const c = conta(p.contaId) || {};
+    const [rot, cls] = ROT_PROP[p.status] || [p.status, 'tag-neutral'];
+    modal({
+      titulo: p.nome || 'Proposta', largura: '620px',
+      corpo: `
+        <div class="row-between"><span class="tag ${cls}">${rot}</span>${prioBadge(c.prioridade)}</div>
+        <dl class="kv" style="margin-top:14px">
+          <dt>Conta</dt><dd>${escHtml(c.contaLabel || '—')} · CPF ${escHtml(mascaraDoc(c.cpf))}</dd>
+          <dt>Saldo devedor na data da proposta</dt><dd>${fmtBRL(p.saldoBase)}</dd>
+          <dt>Tipo</dt><dd>${p.tipo === 'parcelamento' ? 'Parcelamento' : 'Quitação à vista'}</dd>
+          ${p.tipo === 'parcelamento' ? `<dt>Parcelas</dt><dd>${p.parcelas}× de ${fmtBRL(p.valorParcela)}</dd>` : ''}
+          <dt>Total</dt><dd>${fmtBRL(p.valorTotal)} (${fmtPct(p.percentual)} do saldo)</dd>
+          <dt>Origem</dt><dd>${p.origem === 'adm' ? 'Enviada por você' : 'Enviada pelo credor'}</dd>
+          <dt>Criada em</dt><dd>${fmtDataHora(p.criadoEm)}</dd>
+          <dt>Última interação</dt><dd>${fmtDataHora(p.ultimaInteracaoEm)} (${diasDesde(p.ultimaInteracaoEm)} dias)</dd>
+          ${p.dataPagamentoPrevista ? `<dt>Data de pagamento</dt><dd>${fmtData(p.dataPagamentoPrevista)}</dd>` : ''}
+        </dl>
+        <div class="sep"></div>
+        <h3>Contato e recebimento</h3>
+        ${blocoDadosRecebimento(c)}
+        ${p.obs ? `<div style="margin-top:12px" class="note note-info">Observação do credor: ${escHtml(p.obs)}</div>` : ''}
+        ${p.respostaAdm ? `<div style="margin-top:10px" class="note note-${p.status === 'recusada' ? 'bad' : 'ok'}">Sua resposta: ${escHtml(p.respostaAdm)}</div>` : ''}
+        ${p.respostaCredor ? `<div style="margin-top:10px" class="note note-warn">Resposta do credor: ${escHtml(p.respostaCredor)}</div>` : ''}
+        <div class="sep"></div>
+        <h3>Histórico</h3>
+        <div class="tiny muted" style="margin-top:8px">
+          ${(p.historico || []).map(h => `<div>• ${fmtDataHora(h.em)} — <strong>${escHtml(h.quem)}</strong> ${escHtml(h.acao)}${h.texto ? ': ' + escHtml(h.texto) : ''}</div>`).join('') || 'Sem registros.'}
+        </div>
+        <div class="sep"></div>
+        <div class="stack">
+          <div class="field">
+            <label for="mData">Data de pagamento combinada (aparece na tela do credor)</label>
+            <input id="mData" type="date" value="${p.dataPagamentoPrevista ? String(p.dataPagamentoPrevista).slice(0, 10) : ''}">
+          </div>
+          <div class="row">
+            <button class="btn-sm" id="mSalvarData">Salvar data</button>
+            ${c.telefone ? `<a class="btn btn-sm" target="_blank" rel="noreferrer noopener"
+               href="https://wa.me/55${soDigitos(c.whatsapp || c.telefone)}">Abrir WhatsApp</a>` : ''}
+          </div>
+          ${p.status === 'aceita' && !c.pago ? `<button class="btn-ok btn-sm" id="mPago">Marcar como PAGO</button>` : ''}
+          ${c.pago ? `<div class="note note-ok">Pago em ${fmtData(c.dataPagamento)}. Acesso do credor cancelado.
+            ${c.recibo ? '<br>Recibo de quitação concluído em ' + fmtData(c.reciboEm) + '.' : ''}</div>
+            <div class="row">
+              ${!c.recibo ? `<button class="btn-sm" id="mRecibo">Concluir controle de recibo de quitação</button>` : ''}
+              <button class="btn-sm btn-bad" id="mDesmarcar">Desmarcar pago e reabilitar acesso</button>
+            </div>` : ''}
+        </div>`,
+      acoes: p.status === 'pendente'
+        ? `<button class="btn-bad" id="mNao">Não aceitar</button><button class="btn-ok" id="mSim">Aceitar proposta</button>`
+        : `<button class="btn-primary" onclick="fecharModal()">Fechar</button>`
+    });
+
+    porId('mSalvarData').onclick = async () => {
+      await Backend.atualizarProposta(p.id, { dataPagamentoPrevista: porId('mData').value || null });
+      await recarregar(); fecharModal(); irPara(S.aba);
+    };
+    if (porId('mSim')) porId('mSim').onclick = () => responderProposta(p, true);
+    if (porId('mNao')) porId('mNao').onclick = () => responderProposta(p, false);
+    if (porId('mPago')) porId('mPago').onclick = () => marcarPago(p, c);
+    if (porId('mRecibo')) porId('mRecibo').onclick = () => concluirRecibo(c);
+    if (porId('mDesmarcar')) porId('mDesmarcar').onclick = () => desmarcarPago(c);
+  }
+
+  function responderProposta(p, aceitar) {
+    modal({
+      titulo: aceitar ? 'Aceitar proposta' : 'Não aceitar a proposta',
+      corpo: `<p>${aceitar
+          ? 'O credor verá o aceite e a instrução de contato por WhatsApp, e será convidado a confirmar o número.'
+          : 'O credor verá a recusa com a sua justificativa e poderá enviar uma nova proposta.'}</p>
+        <div class="field"><label for="mJust">Justificativa curta (até 200 caracteres)</label>
+        <textarea id="mJust" maxlength="200" placeholder="${aceitar ? 'Ex: combinado, entro em contato hoje' : 'Ex: valor acima do que consigo neste momento'}"></textarea></div>
+        ${aceitar ? `<div class="field"><label for="mData2">Data de pagamento combinada (opcional)</label>
+          <input id="mData2" type="date"></div>` : ''}`,
+      acoes: `<button id="mCancel">Cancelar</button>
+              <button class="${aceitar ? 'btn-ok' : 'btn-bad'}" id="mOk">${aceitar ? 'Confirmar aceite' : 'Confirmar recusa'}</button>`
+    });
+    porId('mCancel').onclick = fecharModal;
+    porId('mOk').onclick = async () => {
+      const just = porId('mJust').value.trim();
+      if (!just) return porId('mJust').focus();
+      porId('mOk').disabled = true;
+      await Backend.atualizarProposta(p.id, {
+        status: aceitar ? 'aceita' : 'recusada', respostaAdm: just, respondidoEm: Backend.agora(),
+        dataPagamentoPrevista: aceitar ? (porId('mData2').value || null) : null,
+        historico: [...(p.historico || []), { quem: 'adm', acao: aceitar ? 'aceitou' : 'recusou', texto: just, em: new Date().toISOString() }]
+      });
+      await Backend.atualizarConta(p.contaId, { propostaAbertaId: null });
+      fecharModal(); await recarregar(); irPara(S.aba);
+    };
+  }
+
+  /* --------- PAGO: duplo OK, cancela acesso --------- */
+  function marcarPago(p, c) {
+    modal({
+      titulo: 'Atenção — esta ação cancela o acesso',
+      corpo: `${aviso('Ao marcar como PAGO, o acesso de ' + c.nome + ' ao site é cancelado no mesmo momento. Para reabilitar, você precisa desmarcar o pago.', 'warn')}
+        <div class="field" style="margin-top:12px"><label for="mDataPg">Data do pagamento</label>
+        <input id="mDataPg" type="date" value="${p.dataPagamentoPrevista ? String(p.dataPagamentoPrevista).slice(0, 10) : hojeISO()}"></div>`,
+      acoes: `<button id="mCancel">Cancelar</button><button class="btn-ok" id="mOk1">Ok, continuar</button>`
+    });
+    porId('mCancel').onclick = fecharModal;
+    porId('mOk1').onclick = () => {
+      const data = porId('mDataPg').value || hojeISO();
+      modal({
+        titulo: 'Confirmação final',
+        corpo: `<p>Confirma marcar <strong>${escHtml(c.nome)}</strong> como PAGO em <strong>${fmtData(data)}</strong> e cancelar o acesso dessa pessoa?</p>
+          ${aviso('Este é o segundo e último Ok.', 'bad')}`,
+        acoes: `<button id="mCancel2">Voltar</button><button class="btn-ok" id="mOk2">Confirmar: marcar PAGO</button>`
+      });
+      porId('mCancel2').onclick = fecharModal;
+      porId('mOk2').onclick = async () => {
+        porId('mOk2').disabled = true;
+        await Backend.atualizarConta(c.id, {
+          pago: true, dataPagamento: data, pagoEm: Backend.agora(), ativo: false, recibo: false
+        });
+        await Backend.atualizarProposta(p.id, {
+          status: 'paga', dataPagamentoPrevista: data,
+          historico: [...(p.historico || []), { quem: 'adm', acao: 'marcou como paga', texto: 'Pagamento em ' + fmtData(data), em: new Date().toISOString() }]
+        });
+        fecharModal(); await recarregar(); irPara(S.aba);
+      };
+    };
+  }
+
+  function desmarcarPago(c) {
+    modal({
+      titulo: 'Desmarcar pago',
+      corpo: `<p>Isso reabilita o acesso de <strong>${escHtml(c.nome)}</strong> ao site e zera o controle de recibo.</p>`,
+      acoes: `<button id="mCancel">Cancelar</button><button class="btn-bad" id="mOk">Desmarcar e reabilitar</button>`
+    });
+    porId('mCancel').onclick = fecharModal;
+    porId('mOk').onclick = async () => {
+      await Backend.atualizarConta(c.id, { pago: false, dataPagamento: null, pagoEm: null, ativo: true, recibo: false, reciboEm: null });
+      fecharModal(); await recarregar(); irPara(S.aba);
+    };
+  }
+
+  function concluirRecibo(c) {
+    modal({
+      titulo: 'Controle de recibo de quitação',
+      corpo: `<p>Confirme que o recibo de quitação de <strong>${escHtml(c.nome)}</strong> já foi emitido e entregue fora do sistema.</p>
+        <label class="check" style="margin-top:10px"><input type="checkbox" id="ckRec">
+        <span>Recibo emitido e entregue. Encerrar este caso em 100%.</span></label>`,
+      acoes: `<button id="mCancel">Cancelar</button><button class="btn-ok" id="mOk" disabled>Concluir</button>`
+    });
+    porId('mCancel').onclick = fecharModal;
+    porId('ckRec').onchange = e => { porId('mOk').disabled = !e.target.checked; };
+    porId('mOk').onclick = async () => {
+      await Backend.atualizarConta(c.id, { recibo: true, reciboEm: Backend.agora() });
+      fecharModal(); await recarregar(); irPara(S.aba);
+    };
+  }
+
+  /* ---------------- enviar proposta (individual ou em lote) ---------------- */
+  function modalNovaProposta() {
+    const elegiveis = S.contas.filter(c => !c.pago && c.ativo && !propsDaConta(c.id).some(p => ['pendente', 'enviada'].includes(p.status)));
+    modal({
+      titulo: 'Enviar proposta', largura: '640px',
+      corpo: `
+        <div class="abas" role="tablist">
+          <button class="aba" role="tab" data-m="um" aria-selected="true">Um credor</button>
+          <button class="aba" role="tab" data-m="lote" aria-selected="false">Em lote</button>
+        </div>
+        <div id="npCorpo" style="margin-top:16px"></div>`,
+      acoes: `<button id="mCancel">Cancelar</button><button class="btn-primary" id="mOk">Enviar</button>`
+    });
+    porId('mCancel').onclick = fecharModal;
+    let modo = 'um';
+    const desenhar = () => {
+      porId('npCorpo').innerHTML = modo === 'um' ? `
+        <div class="field"><label for="npConta">Credor</label>
+          <select id="npConta">${elegiveis.sort((a, b) => b.saldoDevedor - a.saldoDevedor)
+            .map(c => `<option value="${c.id}">${escHtml(c.nome)} ${c.contaLabel ? '(' + escHtml(c.contaLabel) + ')' : ''} — ${fmtBRL(c.saldoDevedor)}</option>`).join('')}</select>
+          <div class="help">${elegiveis.length} credores sem proposta em aberto.</div></div>
+        ${camposCondicao()}
+        <div id="npPrev" style="margin-top:14px"></div>`
+        : `
+        <div class="field"><label for="npFiltro">Aplicar a</label>
+          <select id="npFiltro">
+            <option value="todos">Todos os ${elegiveis.length} sem proposta em aberto</option>
+            <option value="nao">Só os que nunca negociaram</option>
+            ${(S.cfg.prioridades || []).map((pr, i) => `<option value="prio${i}">Prioridade: ${escHtml(pr.nome)}</option>`).join('')}
+            ${[...new Set(S.contas.map(c => c.grupo).filter(Boolean))].map(g => `<option value="grupo:${escHtml(g)}">${escHtml(g)}</option>`).join('')}
+          </select></div>
+        ${camposCondicao(true)}
+        <div id="npPrev" style="margin-top:14px"></div>
+        ${aviso('Em lote, cada credor recebe a proposta calculada sobre o próprio saldo devedor.', 'info')}`;
+      ativarPreview(modo, elegiveis);
+    };
+    elModais.querySelectorAll('.aba').forEach(b => b.onclick = () => {
+      modo = b.dataset.m;
+      elModais.querySelectorAll('.aba').forEach(x => x.setAttribute('aria-selected', x.dataset.m === modo));
+      desenhar();
+    });
+    desenhar();
+    porId('mOk').onclick = () => enviarPropostaAdm(modo, elegiveis);
+  }
+
+  function camposCondicao(lote = false) {
+    return `
+    <div class="field"><label for="npTipo">Tipo</label>
+      <select id="npTipo">
+        <option value="parcelamento">Parcelamento</option>
+        <option value="quitacao">Quitação à vista</option>
+      </select></div>
+    <div class="field" id="wrapParc"><label for="npParc">Número de parcelas</label>
+      <input id="npParc" type="number" min="1" max="120" value="12"></div>
+    <div class="field hide" id="wrapPct"><label for="npPct">Percentual do saldo devedor a pagar à vista (%)</label>
+      <input id="npPct" type="number" min="1" max="200" step="0.5" value="70">
+      ${lote ? '<div class="help">O valor em reais é calculado sobre o saldo de cada credor.</div>' : ''}</div>
+    <div class="field"><label for="npObs">Mensagem para o credor (até 300 caracteres)</label>
+      <textarea id="npObs" maxlength="300"></textarea></div>`;
+  }
+
+  function alvosLote(elegiveis) {
+    const v = porId('npFiltro').value;
+    if (v === 'todos') return elegiveis;
+    if (v === 'nao') return elegiveis.filter(c => !propsDaConta(c.id).length);
+    if (v.startsWith('prio')) return elegiveis.filter(c => Number(c.prioridade || 0) === Number(v.slice(4)));
+    if (v.startsWith('grupo:')) return elegiveis.filter(c => c.grupo === v.slice(6));
+    return [];
+  }
+
+  function ativarPreview(modo, elegiveis) {
+    const t = porId('npTipo'), prev = porId('npPrev');
+    const atualiza = () => {
+      const tipo = t.value;
+      porId('wrapParc').classList.toggle('hide', tipo !== 'parcelamento');
+      porId('wrapPct').classList.toggle('hide', tipo !== 'quitacao');
+      const alvos = modo === 'um' ? [conta(porId('npConta').value)].filter(Boolean) : alvosLote(elegiveis);
+      if (!alvos.length) { prev.innerHTML = aviso('Nenhum credor neste recorte.', 'warn'); return; }
+      const linhas = alvos.slice(0, 5).map(c => {
+        const r = calcular(c, tipo);
+        return `<tr><td>${escHtml(c.nome)}</td><td class="num">${fmtBRL(c.saldoDevedor)}</td>
+          <td class="num">${tipo === 'parcelamento' ? `${r.parcelas}× ${fmtBRL(r.valorParcela)}` : fmtBRL(r.valorTotal)}</td>
+          <td class="num">${fmtPct(r.percentual, 1)}</td></tr>`;
+      }).join('');
+      const soma = alvos.reduce((s, c) => s + calcular(c, tipo).valorTotal, 0);
+      prev.innerHTML = `<div class="tbl-wrap"><table>
+        <thead><tr><th>Credor</th><th class="num">Saldo</th><th class="num">Proposta</th><th class="num">%</th></tr></thead>
+        <tbody>${linhas}</tbody></table></div>
+        <div class="tiny muted" style="margin-top:8px">${alvos.length} credor(es)${alvos.length > 5 ? ' — mostrando os 5 primeiros' : ''}. Soma das propostas: <strong>${fmtBRL(soma)}</strong>.</div>`;
+    };
+    t.onchange = atualiza;
+    ['npParc', 'npPct', 'npConta', 'npFiltro'].forEach(id => { if (porId(id)) porId(id).oninput = porId(id).onchange = atualiza; });
+    atualiza();
+  }
+
+  function calcular(c, tipo) {
+    if (tipo === 'parcelamento') {
+      const n = Math.max(1, parseInt(porId('npParc').value || '1', 10));
+      return simularParcelamento(c.saldoDevedor, taxaDa(c), n);
+    }
+    const pct = Number(porId('npPct').value || 0) / 100;
+    const v = Math.round(c.saldoDevedor * pct * 100) / 100;
+    return { tipo: 'quitacao', parcelas: 1, valorParcela: v, valorTotal: v, percentual: pct };
+  }
+
+  async function enviarPropostaAdm(modo, elegiveis) {
+    const tipo = porId('npTipo').value;
+    const obs = porId('npObs').value.trim();
+    const alvos = modo === 'um' ? [conta(porId('npConta').value)].filter(Boolean) : alvosLote(elegiveis);
+    if (!alvos.length) return;
+    const b = porId('mOk'); b.disabled = true; b.textContent = 'Enviando…';
+    for (const c of alvos) {
+      const r = calcular(c, tipo);
+      const id = await Backend.criarProposta({
+        contaId: c.id, nome: c.nome, origem: 'adm', tipo,
+        parcelas: r.parcelas, valorParcela: r.valorParcela, valorTotal: r.valorTotal,
+        percentual: r.percentual, obs, status: 'enviada', respostaAdm: null, respostaCredor: null,
+        prioridade: c.prioridade || 0, saldoBase: c.saldoDevedor, dataPagamentoPrevista: null,
+        respondidoEm: null,
+        historico: [{ quem: 'adm', acao: 'enviou', texto: obs || descricaoCurta(tipo, r), em: new Date().toISOString() }]
+      });
+      await Backend.atualizarConta(c.id, { propostaAbertaId: id });
+    }
+    fecharModal(); await recarregar(); S.filtro = 'enviadas'; irPara('propostas');
+  }
+  const descricaoCurta = (tipo, r) => tipo === 'parcelamento' ? `${r.parcelas}× de ${fmtBRL(r.valorParcela)}` : `${fmtBRL(r.valorTotal)} à vista`;
+
+  /* ================================================================
+     CHAMADOS
+     ================================================================ */
+  function abaChamados() {
+    const abertos = S.chamados.filter(c => c.status !== 'resolvido')
+      .sort((a, b) => (msParaData(a.criadoEm) || 0) - (msParaData(b.criadoEm) || 0));
+    const fechados = S.chamados.filter(c => c.status === 'resolvido');
+    render(`
+    <div class="stack">
+      ${!soDigitos(S.cfg.whatsappAdm) ? `<div class="card card-pad" style="border-color:#f0dcb4;background:var(--warn-soft)">
+        <h2 style="color:var(--warn)">Qual o seu WhatsApp de atendimento?</h2>
+        <p class="tiny" style="margin-top:4px;color:var(--warn)">É o número de onde você vai falar com quem abriu chamado.
+        Fica guardado e não pergunto de novo — só aparece aqui para você ter à mão, e você troca quando quiser em Configurações.</p>
+        <div class="row" style="margin-top:12px">
+          <input id="waNovo" inputmode="tel" placeholder="(00) 00000-0000" maxlength="16" style="max-width:220px">
+          <button class="btn-primary btn-sm" id="bWaSalvar">Guardar</button>
+        </div>
+      </div>` : ''}
+
+      <div class="card card-pad">
+        <div class="row-between">
+          <div>
+            <h2>Chamados abertos <span class="tag tag-warn">${abertos.length}</span></h2>
+            <p class="muted tiny" style="margin-top:4px">Antes de ajudar com o acesso, confira os três dados com a pessoa pelo WhatsApp: nome completo, CPF e telefone. Marque cada item conferido.</p>
+          </div>
+          ${soDigitos(S.cfg.whatsappAdm) ? `<div class="right tiny muted">
+            Seu WhatsApp de atendimento<br>
+            <strong class="mono" style="font-size:.95rem;color:var(--txt)">${escHtml(mascaraTel(S.cfg.whatsappAdm))}</strong>
+            <br><button class="btn-ghost btn-sm" id="bWaTrocar">trocar</button></div>` : ''}
+        </div>
+      </div>
+      ${abertos.map(ch => cardChamado(ch)).join('') || '<div class="card card-pad muted center">Nenhum chamado aberto.</div>'}
+
+      <div class="card card-pad">
+        <h2>Identificação — tentativas por login</h2>
+        <p class="muted tiny" style="margin-top:4px">Cada login tem ${MAX_TENTATIVAS} tentativas para acertar CPF e 4 dígitos.
+        É esse limite que impede alguém de descobrir os 4 dígitos por tentativa e erro. Depois de confirmar a identidade
+        da pessoa pelo WhatsApp, devolva as tentativas dela aqui.</p>
+        ${S.tentativas.length ? `<div class="tbl-wrap" style="margin-top:12px">
+          <table><thead><tr><th>Login (uid)</th><th>Último CPF tentado</th><th>4 dígitos</th>
+            <th class="num">Tentativas</th><th>Quando</th><th></th></tr></thead>
+          <tbody>${S.tentativas.sort((a, b) => Number(b.n || 0) - Number(a.n || 0)).map(t => `<tr>
+            <td class="tiny mono">${escHtml(t.uid)}</td>
+            <td class="tiny mono">${escHtml(mascaraDoc(t.cpf) || '—')}</td>
+            <td class="tiny mono">${escHtml(t.ult4 || '—')}</td>
+            <td class="num">${Number(t.n || 0) >= MAX_TENTATIVAS
+              ? '<span class="tag tag-bad">' + t.n + ' — travado</span>' : t.n}</td>
+            <td class="tiny muted">${fmtDataHora(t.em)}</td>
+            <td><button class="btn-sm" data-zerar="${escHtml(t.uid)}">Devolver tentativas</button></td>
+          </tr>`).join('')}</tbody></table></div>`
+          : '<p class="muted tiny" style="margin-top:12px">Nenhum login tentou se identificar ainda.</p>'}
+      </div>
+      ${fechados.length ? `<div class="card card-pad">
+        <h2>Resolvidos <span class="tag tag-neutral">${fechados.length}</span></h2>
+        <div class="tbl-wrap" style="margin-top:12px;border:0"><table>
+        <tbody>${fechados.map(ch => `<tr><td>${escHtml(ch.nomeCompleto || '—')}</td>
+          <td class="tiny muted">${escHtml(mascaraDoc(ch.cpf))}</td>
+          <td class="tiny muted">${fmtData(ch.criadoEm)}</td>
+          <td class="tiny muted">${escHtml(ch.notaAdm || '')}</td></tr>`).join('')}</tbody></table></div>
+      </div>` : ''}
+    </div>`);
+    if (porId('waNovo')) {
+      porId('waNovo').addEventListener('input', e => { e.target.value = mascaraTel(e.target.value); });
+      porId('bWaSalvar').onclick = async () => {
+        const t = soDigitos(porId('waNovo').value);
+        if (t.length < 10) { alert('Informe o número com DDD.'); return porId('waNovo').focus(); }
+        await Backend.salvarConfig({ whatsappAdm: t });
+        await recarregar(); irPara('chamados');
+      };
+    }
+    if (porId('bWaTrocar')) porId('bWaTrocar').onclick = async () => {
+      await Backend.salvarConfig({ whatsappAdm: '' });
+      await recarregar(); irPara('chamados');
+    };
+    ligar('[data-ch-res]', 'click', e => resolverChamado(e.currentTarget.dataset.chRes));
+    ligar('[data-zerar]', 'click', async e => {
+      const uid = e.currentTarget.dataset.zerar;
+      if (!confirm('Devolver as tentativas de identificação deste login?\n\nFaça isso só depois de confirmar a identidade da pessoa pelo WhatsApp.')) return;
+      await Backend.admZerarTentativas(uid);
+      await recarregar(); irPara('chamados');
+    });
+    ligar('[data-ch-ck]', 'change', async e => {
+      const [id, campo] = e.currentTarget.dataset.chCk.split('|');
+      const ch = S.chamados.find(x => x.id === id);
+      const conf = { ...(ch.conferencia || {}), [campo]: e.currentTarget.checked };
+      await Backend.admAtualizarChamado(id, { conferencia: conf, status: 'em_atendimento' });
+      ch.conferencia = conf; ch.status = 'em_atendimento';
+    });
+  }
+
+  function cardChamado(ch) {
+    const cf = ch.conferencia || {};
+    const casa = S.contas.filter(c => c.cpf && c.cpf === soDigitos(ch.cpf));
+    return `<div class="card card-pad">
+      <div class="row-between">
+        <div>
+          <div class="kicker">${ch.tipo === 'acesso' ? 'Ajuda com acesso' : 'Proposta'}</div>
+          <h2 style="margin-top:3px">${escHtml(ch.nomeCompleto || '—')}</h2>
+        </div>
+        <div class="right tiny muted">${fmtDataHora(ch.criadoEm)}<br>${diasDesde(ch.criadoEm)} dias em aberto</div>
+      </div>
+      <dl class="kv" style="margin-top:12px">
+        <dt>CPF informado</dt><dd>${escHtml(mascaraDoc(ch.cpf))}</dd>
+        <dt>Telefone informado</dt><dd>${escHtml(mascaraTel(ch.telefone))}</dd>
+        ${ch.email ? `<dt>E-mail</dt><dd>${escHtml(ch.email)}</dd>` : ''}
+        ${ch.mensagem ? `<dt>Mensagem</dt><dd style="font-weight:400">${escHtml(ch.mensagem)}</dd>` : ''}
+      </dl>
+      ${casa.length ? `<div style="margin-top:12px" class="note note-ok">
+          Encontrei ${casa.length} conta(s) com este CPF na base:
+          ${casa.map(c => `<br>• ${escHtml(c.nome)} — 4 últimos do telefone <strong>${escHtml(c.ult4 || '—')}</strong>${c.ult4Alt ? ' ou <strong>' + escHtml(c.ult4Alt) + '</strong>' : ''},
+          saldo ${fmtBRL(c.saldoDevedor)}, ${c.uid ? 'acesso já vinculado a <strong>' + escHtml(c.emailAcesso) + '</strong>' : '<strong>sem acesso vinculado</strong>'}`).join('')}
+        </div>`
+        : `<div style="margin-top:12px" class="note note-bad">Nenhuma conta na base com este CPF. Confira o número antes de liberar qualquer informação.</div>`}
+      <div class="sep"></div>
+      <h3>Conferência de identidade</h3>
+      <div class="stack" style="margin-top:8px">
+        <label class="check"><input type="checkbox" data-ch-ck="${ch.id}|nome" ${cf.nome ? 'checked' : ''}><span>Nome completo confere com o cadastro</span></label>
+        <label class="check"><input type="checkbox" data-ch-ck="${ch.id}|cpf" ${cf.cpf ? 'checked' : ''}><span>CPF confere com o cadastro</span></label>
+        <label class="check"><input type="checkbox" data-ch-ck="${ch.id}|tel" ${cf.tel ? 'checked' : ''}><span>Telefone confere e a pessoa atendeu nesse número</span></label>
+        <label class="check"><input type="checkbox" data-ch-ck="${ch.id}|valor" ${cf.valor ? 'checked' : ''}><span>A pessoa soube dizer um valor de aporte compatível</span></label>
+      </div>
+      <div class="row" style="margin-top:14px">
+        ${ch.telefone ? `<a class="btn btn-sm" target="_blank" rel="noreferrer noopener" href="https://wa.me/55${soDigitos(ch.telefone)}">Abrir WhatsApp</a>` : ''}
+        <button class="btn-ok btn-sm" data-ch-res="${ch.id}">Marcar como resolvido</button>
+      </div>
+    </div>`;
+  }
+
+  function resolverChamado(id) {
+    const ch = S.chamados.find(x => x.id === id);
+    modal({
+      titulo: 'Resolver chamado',
+      corpo: `<div class="field"><label for="mNota">O que foi feito</label>
+        <textarea id="mNota" maxlength="300" placeholder="Ex: identidade confirmada por WhatsApp, orientei a redefinir a senha"></textarea></div>`,
+      acoes: `<button id="mCancel">Cancelar</button><button class="btn-ok" id="mOk">Resolver</button>`
+    });
+    porId('mCancel').onclick = fecharModal;
+    porId('mOk').onclick = async () => {
+      await Backend.admAtualizarChamado(id, { status: 'resolvido', notaAdm: porId('mNota').value.trim(), resolvidoEm: Backend.agora() });
+      fecharModal(); await recarregar(); irPara('chamados');
+    };
+  }
+
+  /* ================================================================
+     CREDORES
+     ================================================================ */
+  const FAIXA = 50000;
+  const curto = v => v >= 1e6
+    ? 'R$ ' + (v / 1e6).toLocaleString('pt-BR', { maximumFractionDigits: 2 }) + ' mi'
+    : 'R$ ' + (v / 1000).toLocaleString('pt-BR', { maximumFractionDigits: 0 }) + ' mil';
+  const rotuloFaixa = i => i === 0
+    ? 'Até ' + curto(FAIXA)
+    : curto(i * FAIXA) + ' a ' + curto((i + 1) * FAIXA);
+
+  const SITUACOES = [
+    ['todos', 'Todos', () => true],
+    ['pendencias', 'Com pendência', c => (c.pendencias || []).length > 0],
+    ['bloqueados', 'Bloqueados', c => !c.ativo],
+    ['liquidados', 'Liquidados', c => !!c.pago],
+    ['vinculados', 'Com acesso criado', c => !!c.uid],
+    ['sem_vinculo', 'Sem acesso criado', c => !c.uid]
+  ];
+
+  function abaCredores() {
+    const b = S.busca.trim().toLowerCase();
+    const bd = soDigitos(b);   // só compara CPF quando a busca tem dígitos —
+                               // senão includes('') casava com todo mundo
+    const porBusca = c => !b
+      || (c.nome || '').toLowerCase().includes(b)
+      || (bd && soDigitos(c.cpf).includes(bd))
+      || (bd && soDigitos(c.telefone).includes(bd))
+      || String(c.ref ?? '') === b
+      || (c.emailCadastro || '').includes(b)
+      || (c.emailAcesso || '').includes(b);
+
+    const sit = SITUACOES.find(x => x[0] === S.cred.situacao) || SITUACOES[0];
+    const naFaixa = c => S.cred.faixa === 'todas'
+      || Math.floor(Number(c.saldoDevedor || 0) / FAIXA) === Number(S.cred.faixa);
+
+    const lista = S.contas.filter(c => porBusca(c) && sit[2](c) && naFaixa(c))
+      .sort((x, y) => y.saldoDevedor - x.saldoDevedor);
+
+    /* faixas de 50 mil, só as que têm gente */
+    const faixas = {};
+    S.contas.filter(c => porBusca(c) && sit[2](c)).forEach(c => {
+      const i = Math.floor(Number(c.saldoDevedor || 0) / FAIXA);
+      faixas[i] = (faixas[i] || 0) + 1;
+    });
+    const somaLista = lista.reduce((a, c) => a + Number(c.saldoDevedor || 0), 0);
+
+    render(`
+    <div class="stack">
+      <div class="card card-pad">
+        <div class="filtros">
+          ${SITUACOES.map(x => `<button class="chip" data-sit="${x[0]}" aria-pressed="${x[0] === S.cred.situacao}">
+            ${x[1]}<b>${S.contas.filter(c => porBusca(c) && x[2](c)).length}</b></button>`).join('')}
+        </div>
+        <div class="row" style="margin-top:12px">
+          <input id="iBusca" placeholder="Buscar por nome, CPF, telefone, ref ou e-mail" value="${escHtml(S.busca)}" style="max-width:320px">
+          <select id="iFaixa" style="max-width:250px">
+            <option value="todas">Qualquer valor</option>
+            ${Object.keys(faixas).map(Number).sort((a, c) => a - c).map(i =>
+              `<option value="${i}" ${String(i) === String(S.cred.faixa) ? 'selected' : ''}>${rotuloFaixa(i)} (${faixas[i]})</option>`).join('')}
+          </select>
+          ${(S.cred.situacao !== 'todos' || S.cred.faixa !== 'todas' || b) ? `<button class="btn-sm" id="bLimpar">Limpar filtros</button>` : ''}
+        </div>
+        <div class="tiny muted" style="margin-top:10px">
+          <strong>${lista.length}</strong> de ${S.contas.length} contas · somam <strong>${fmtBRL(somaLista)}</strong>
+          · ${S.contas.filter(c => c.ativo).length} com acesso liberado na base inteira
+        </div>
+      </div>
+      <div class="tbl-wrap"><table class="tbl-credores">
+        <colgroup>
+          <col class="c-nome"><col class="c-chave"><col class="c-acesso">
+          <col class="c-valor"><col class="c-neg"><col class="c-acao">
+        </colgroup>
+        <thead><tr>
+          <th>Credor</th><th>Chave de acesso</th><th>Acesso</th>
+          <th class="num">Saldo devedor</th><th>Negociação</th><th></th>
+        </tr></thead>
+        <tbody>${lista.map(c => {
+          const e = estadoDaConta(c);
+          const pr = (S.cfg.prioridades || [])[Number(c.prioridade || 0)];
+          /* uma coluna só para o acesso: bloqueado manda em tudo; depois
+             vem vinculado ou sem acesso, com o e-mail em letra miúda */
+          const acesso = !c.ativo
+            ? '<span class="tag tag-bad">bloqueado</span>'
+            : c.uid
+              ? `<span class="tag tag-ok">vinculado</span>
+                 <div class="cel-sub" title="${escHtml(c.emailAcesso)}">${escHtml(c.emailAcesso)}</div>`
+              : `<span class="tag tag-warn">sem acesso</span>${c.emailCadastro
+                  ? `<div class="cel-sub" title="${escHtml(c.emailCadastro)}">${escHtml(c.emailCadastro)}</div>` : ''}`;
+          return `<tr data-abrir-conta="${c.id}" style="cursor:pointer">
+            <td>
+              <div class="cel-nome">${escHtml(c.nome)}</div>
+              <div class="cel-tags">
+                <span class="cel-ref">#${c.ref ?? '\u2014'}</span>
+                ${c.contaLabel ? `<span class="cel-sub">${escHtml(c.contaLabel)}</span>` : ''}
+                ${Number(c.prioridade || 0) > 0 && pr
+                  ? `<span class="prio" style="color:${pr.cor}"><i style="background:${pr.cor}"></i>${escHtml(pr.nome)}</span>` : ''}
+                ${(c.pendencias || []).length ? `<span class="tag tag-warn">${c.pendencias.length} pendência(s)</span>` : ''}
+              </div>
+            </td>
+            <td class="cel-chave mono">${escHtml(mascaraDoc(c.cpf) || '\u2014')}
+              <div class="cel-sub mono">4 díg: ${escHtml(c.ult4 || '\u2014')}${c.ult4Alt ? ' / ' + escHtml(c.ult4Alt) : ''}</div>
+            </td>
+            <td>${acesso}</td>
+            <td class="num cel-valor">${fmtBRL(c.saldoDevedor)}</td>
+            <td><span class="prio" style="color:${ROT_ESTADO[e][1]}"><i style="background:${ROT_ESTADO[e][1]}"></i>${ROT_ESTADO[e][0]}</span></td>
+            <td><button class="btn-sm" data-edit="${c.id}">Editar</button></td>
+          </tr>`;
+        }).join('')}</tbody></table></div>
+    </div>`);
+    porId('iBusca').oninput = e => {
+      const v = e.target.value, pos = e.target.selectionStart;
+      S.busca = v; abaCredores();
+      /* o campo é recriado no redesenho: devolve o texto E a posição do
+         cursor, senão cada tecla nova entra no começo (073 virava 370) */
+      const n = porId('iBusca');
+      n.value = v; n.focus(); n.setSelectionRange(pos, pos);
+    };
+    porId('iFaixa').onchange = e => { S.cred.faixa = e.target.value; abaCredores(); };
+    ligar('[data-sit]', 'click', e => { S.cred.situacao = e.currentTarget.dataset.sit; S.cred.faixa = 'todas'; abaCredores(); });
+    if (porId('bLimpar')) porId('bLimpar').onclick = () => {
+      S.cred = { situacao: 'todos', faixa: 'todas' }; S.busca = ''; abaCredores();
+    };
+    ligar('[data-edit]', 'click', e => { e.stopPropagation(); modalEditarConta(e.currentTarget.dataset.edit); });
+    ligar('[data-abrir-conta]', 'click', e => modalEditarConta(e.currentTarget.dataset.abrirConta));
+  }
+
+  function modalEditarConta(id) {
+    const c = conta(id);
+    modal({
+      titulo: c.nome || 'Credor', largura: '640px',
+      corpo: `
+        ${(c.pendencias || []).length ? `<div class="stack" style="margin-bottom:16px">
+          ${c.pendencias.map(p => `<div class="pend-item ${p.severidade}">
+            <div class="kicker">${p.severidade}</div>
+            <div style="margin-top:3px">${escHtml(p.detalhe)}</div>
+            <div class="tiny muted" style="margin-top:4px">${escHtml(p.acao)}</div></div>`).join('')}
+        </div>` : ''}
+        <div class="grid2">
+          <div class="field"><label for="eNome">Nome</label><input id="eNome" value="${escHtml(c.nome || '')}"></div>
+          <div class="field"><label for="eEmail">E-mail de cadastro (só contato — não é a chave do acesso)</label><input id="eEmail" type="email" value="${escHtml(c.emailCadastro || '')}"></div>
+          <div class="field"><label for="eCpf">CPF ou CNPJ</label><input id="eCpf" value="${escHtml(mascaraDoc(c.cpf) || '')}"></div>
+          <div class="field"><label for="eTel">Telefone com DDD</label><input id="eTel" value="${escHtml(mascaraTel(c.telefone) || '')}"></div>
+          <div class="field"><label for="eAp">Valor aportado (a)</label>
+            <div class="campo-moeda"><span>R$</span><input id="eAp" inputmode="numeric" value="${moedaTexto(c.aportes)}"></div></div>
+          <div class="field"><label for="eSq">Valor sacado (b)</label>
+            <div class="campo-moeda"><span>R$</span><input id="eSq" inputmode="numeric" value="${moedaTexto(c.saques)}"></div></div>
+          <div class="field"><label for="eSd">Saldo devedor final (d)</label>
+            <div class="campo-moeda"><span>R$</span><input id="eSd" inputmode="numeric" value="${moedaTexto(c.saldoDevedor)}"></div></div>
+          <div class="field"><label for="ePrio">Prioridade</label><select id="ePrio">
+            ${(S.cfg.prioridades || []).map((pr, i) => `<option value="${i}" ${Number(c.prioridade || 0) === i ? 'selected' : ''}>${escHtml(pr.nome)}</option>`).join('')}
+          </select></div>
+          <div class="field"><label for="eTaxa">Índice de correção da parcela (% ao mês) — nunca exibido ao credor</label>
+            <input id="eTaxa" inputmode="decimal" value="${c.taxaMensal != null ? String(Number(c.taxaMensal) * 100).replace('.', ',') : ''}" placeholder="usa o geral: ${String(Number(S.cfg.taxaPadrao || 0) * 100).replace('.', ',')}"></div>
+          <div class="field"><label for="eMaxP">Máximo de parcelas</label>
+            <input id="eMaxP" type="number" min="1" max="120" value="${c.maxParcelas || ''}" placeholder="usa o geral: ${S.cfg.maxParcelas}"></div>
+        </div>
+        <div class="row-between" style="margin-top:12px;padding:10px 12px;background:var(--surface-2);
+             border:1px solid var(--line);border-radius:var(--r-sm)">
+          <span class="tiny muted">Saldo nominal (a − b), recalculado sozinho</span>
+          <strong id="eNominalPrev" class="mono">—</strong>
+        </div>
+        <div class="sep"></div>
+        <h3>Contato e recebimento</h3>
+        ${blocoDadosRecebimento(c)}
+        <div class="sep"></div>
+        <h3>Acesso ao site</h3>
+        <div class="tiny muted" style="margin:6px 0 10px">
+          A chave de acesso é <strong>CPF ${escHtml(mascaraDoc(c.cpf) || '—')}</strong> +
+          os 4 últimos dígitos <strong>${escHtml(c.ult4 || '—')}</strong>${c.ult4Alt ? ' ou <strong>' + escHtml(c.ult4Alt) + '</strong>' : ''}.
+          ${c.uid
+            ? 'Já vinculado ao login <strong>' + escHtml(c.emailAcesso) + '</strong> em ' + fmtDataHora(c.vinculadoEm) + '.'
+            : 'Nenhum login vinculado ainda — a primeira pessoa que acertar essa chave assume esta conta.'}
+        </div>
+        ${c.uid ? `<button class="btn-sm btn-bad" id="eDesvincular">Desvincular este acesso</button>` : ''}
+        <div class="sep"></div>
+        <label class="check"><input type="checkbox" id="eAtivo" ${c.ativo ? 'checked' : ''}><span>Acesso ao site liberado</span></label>
+        <div class="tiny muted" style="margin-top:8px">
+          ${c.termosAceitos ? `<br>Termo aceito em ${fmtDataHora(c.termosAceitosEm)}.` : '<br>Termo ainda não aceito.'}
+          ${c.pago ? `<br>Pago em ${fmtData(c.dataPagamento)}${c.recibo ? ', recibo concluído' : ', recibo pendente'}.` : ''}
+        </div>
+        ${(c.pendencias || []).length ? `<div class="row" style="margin-top:14px">
+          <button class="btn-sm" id="eLimpar">Marcar pendências como resolvidas</button></div>` : ''}`,
+      acoes: `<button id="mCancel">Cancelar</button><button class="btn-primary" id="mOk">Salvar</button>`
+    });
+    porId('mCancel').onclick = fecharModal;
+    ['eAp', 'eSq', 'eSd'].forEach(id => ligarMoeda(porId(id)));
+    const eNominal = () => {
+      const v = moedaValor(porId('eAp').value) - moedaValor(porId('eSq').value);
+      porId('eNominalPrev').textContent = fmtBRL(v);
+      porId('eNominalPrev').className = 'mono' + (v < 0 ? ' ' : '');
+      porId('eNominalPrev').style.color = v < 0 ? 'var(--bad)' : 'var(--txt)';
+    };
+    ['eAp', 'eSq'].forEach(id => porId(id).addEventListener('input', eNominal));
+    eNominal();
+    porId('eCpf').addEventListener('input', e => { e.target.value = mascaraDoc(e.target.value); });
+    porId('eTel').addEventListener('input', e => { e.target.value = mascaraTel(e.target.value); });
+    if (porId('eDesvincular')) porId('eDesvincular').onclick = async () => {
+      if (!confirm('Desvincular o acesso de ' + c.nome + '?\n\nO login ' + c.emailAcesso + ' deixa de ver esta conta, e ela volta a poder ser reivindicada por quem informar o CPF e os 4 dígitos.\n\nO aceite do termo também é apagado: quem assumir depois aceita de novo.')) return;
+      await Backend.admDesvincular(c.id);
+      fecharModal(); await recarregar(); irPara(S.aba);
+    };
+    if (porId('eLimpar')) porId('eLimpar').onclick = async () => {
+      await Backend.atualizarConta(c.id, { pendencias: [], pendenciasAbertas: 0, severidadeMax: null });
+      fecharModal(); await recarregar(); irPara(S.aba);
+    };
+    porId('mOk').onclick = async () => {
+      const ap = moedaValor(porId('eAp').value);
+      const sq = moedaValor(porId('eSq').value);
+      const sd = moedaValor(porId('eSd').value);
+      const doc = soDigitos(porId('eCpf').value);
+      const tel = soDigitos(porId('eTel').value);
+      const email = porId('eEmail').value.trim().toLowerCase();
+      const erros = [];
+      if (doc && !validaDoc(doc)) erros.push('CPF/CNPJ inválido.');
+      if (email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) erros.push('E-mail inválido.');
+      if (tel && tel.length < 10) erros.push('Telefone incompleto.');
+      if (erros.length) { alert(erros.join('\n')); return; }
+      const txt = String(porId('eTaxa').value).replace(',', '.').trim();
+      await Backend.atualizarConta(c.id, {
+        nome: porId('eNome').value.trim(), emailCadastro: email, cpf: doc, telefone: tel,
+        ult4: tel.slice(-4), aportes: ap, saques: sq, saldoNominal: Math.round((ap - sq) * 100) / 100,
+        saldoDevedor: sd, prioridade: Number(porId('ePrio').value || 0),
+        taxaMensal: txt === '' ? null : Number(txt) / 100,
+        maxParcelas: porId('eMaxP').value ? Number(porId('eMaxP').value) : null,
+        ativo: porId('eAtivo').checked
+      });
+      fecharModal(); await recarregar(); irPara(S.aba);
+    };
+  }
+
+
+  /* ================================================================
+     CALIBRAGEM — simular o efeito dos pesos na base inteira
+     ================================================================ */
+  function alvosCalibragem() {
+    const r = S.cal.recorte;
+    let l = S.contas.filter(c => c.ativo && !c.pago);
+    if (r === 'nao_negociou') l = l.filter(c => !propsDaConta(c.id).length);
+    else if (r.startsWith('prio')) l = l.filter(c => Number(c.prioridade || 0) === Number(r.slice(4)));
+    else if (r.startsWith('grupo:')) l = l.filter(c => c.grupo === r.slice(6));
+    return l;
+  }
+
+  function abaCalibragem() {
+    if (S.cal.indice === null) S.cal.indice = Number(S.cfg.taxaPadrao || 0) * 100;
+    const alvos = alvosCalibragem();
+    const n = Math.max(1, Number(S.cal.parcelas) || 1);
+    const iSim = Number(String(S.cal.indice).replace(',', '.') || 0) / 100;
+
+    const saldo = alvos.reduce((s, c) => s + Number(c.saldoDevedor || 0), 0);
+    const hoje = alvos.reduce((s, c) => s + simularParcelamento(c.saldoDevedor, taxaDa(c), n).valorTotal, 0);
+    const sim = alvos.reduce((s, c) => s + simularParcelamento(c.saldoDevedor, iSim, n).valorTotal, 0);
+    const parcelasSim = alvos.map(c => simularParcelamento(c.saldoDevedor, iSim, n).valorParcela);
+    const media = parcelasSim.length ? parcelasSim.reduce((a, b) => a + b, 0) / parcelasSim.length : 0;
+    const maior = parcelasSim.length ? Math.max(...parcelasSim) : 0;
+
+    /* quebra por prioridade — é como ele calibra ao longo do tempo */
+    const porPrio = (S.cfg.prioridades || []).map((pr, i) => ({ ...pr, i, n: 0, saldo: 0, sim: 0 }));
+    alvos.forEach(c => {
+      const i = Math.min(Number(c.prioridade || 0), porPrio.length - 1);
+      const g = porPrio[i];
+      if (!g) return;
+      g.n++;
+      g.saldo += Number(c.saldoDevedor || 0);
+      g.sim += simularParcelamento(c.saldoDevedor, iSim, n).valorTotal;
+    });
+
+    const dif = sim - saldo;
+    const difHoje = sim - hoje;
+
+    render(`
+    <div class="stack">
+      <div class="card card-pad">
+        <h2>Calibragem dos cálculos</h2>
+        <p class="muted tiny" style="margin-top:4px">Dois pesos definem tudo que o credor vê na simulação: o
+        <strong>índice ao mês</strong> e o <strong>número de parcelas</strong>. Mexa neles aqui e veja o efeito
+        na base inteira antes de decidir. Nada muda para os credores enquanto você não aplicar.</p>
+
+        <div class="grid2" style="margin-top:16px">
+          <div class="field">
+            <label for="calInd">Índice ao mês (%)</label>
+            <input id="calInd" inputmode="decimal" value="${escHtml(String(S.cal.indice).replace('.', ','))}">
+            <div class="help">Nunca aparece na tela do credor. Ele vê só o valor da parcela e o percentual.</div>
+          </div>
+          <div class="field">
+            <label for="calParc">Número de parcelas simulado</label>
+            <input id="calParc" type="number" min="1" max="120" value="${n}">
+            <div class="help">É o cenário que você quer medir, não o máximo permitido.</div>
+          </div>
+        </div>
+        <div class="field">
+          <label for="calRec">Sobre quais credores</label>
+          <select id="calRec">
+            <option value="todos" ${S.cal.recorte === 'todos' ? 'selected' : ''}>Todos os credores liberados e não pagos</option>
+            <option value="nao_negociou" ${S.cal.recorte === 'nao_negociou' ? 'selected' : ''}>Só os que ainda não negociaram</option>
+            ${(S.cfg.prioridades || []).map((pr, i) => `<option value="prio${i}" ${S.cal.recorte === 'prio' + i ? 'selected' : ''}>Prioridade: ${escHtml(pr.nome)}</option>`).join('')}
+            ${[...new Set(S.contas.map(c => c.grupo).filter(Boolean))].sort().map(g => `<option value="grupo:${escHtml(g)}" ${S.cal.recorte === 'grupo:' + g ? 'selected' : ''}>${escHtml(g)}</option>`).join('')}
+          </select>
+        </div>
+        <div class="row" style="margin-top:12px">
+          ${[0.5, 1, 1.25, 1.5, 2, 3].map(v => `<button class="chip" data-ind="${v}" aria-pressed="${Number(S.cal.indice) === v}">${String(v).replace('.', ',')}%</button>`).join('')}
+        </div>
+        <div class="row" style="margin-top:8px">
+          ${[1, 6, 12, 24, 36, 48].map(v => `<button class="chip" data-parc="${v}" aria-pressed="${n === v}">${v}x</button>`).join('')}
+        </div>
+      </div>
+
+      <div class="tiles">
+        <div class="tile"><div class="t-rot">Credores no recorte</div>
+          <div class="t-val">${alvos.length}</div>
+          <div class="t-sub">de ${S.contas.filter(c => c.ativo && !c.pago).length} liberados</div></div>
+        <div class="tile"><div class="t-rot">Saldo devedor somado</div>
+          <div class="t-val" style="font-size:1.25rem">${fmtBRL(saldo)}</div>
+          <div class="t-sub">é o ponto de partida</div></div>
+        <div class="tile"><div class="t-rot">Total a receber em ${n}x</div>
+          <div class="t-val" style="font-size:1.25rem">${fmtBRL(sim)}</div>
+          <div class="t-sub">${fmtPct(saldo ? sim / saldo : 0, 1)} do saldo</div></div>
+        <div class="tile"><div class="t-rot">Acréscimo sobre o saldo</div>
+          <div class="t-val" style="font-size:1.25rem;color:${dif >= 0 ? 'var(--st-sem)' : 'var(--st-ace)'}">${fmtBRL(dif)}</div>
+          <div class="t-sub">é o que o prazo custa a mais</div></div>
+        <div class="tile"><div class="t-rot">Parcela média</div>
+          <div class="t-val" style="font-size:1.25rem">${fmtBRL(media)}</div>
+          <div class="t-sub">maior: ${fmtBRL(maior)}</div></div>
+        <div class="tile"><div class="t-rot">Contra os índices de hoje</div>
+          <div class="t-val" style="font-size:1.25rem;color:${difHoje >= 0 ? 'var(--st-sem)' : 'var(--st-ace)'}">${difHoje >= 0 ? '+' : ''}${fmtBRL(difHoje)}</div>
+          <div class="t-sub">hoje daria ${fmtBRL(hoje)}</div></div>
+      </div>
+
+      <div class="grid2">
+        <div class="card card-pad">
+          <h2>Por prioridade</h2>
+          <p class="muted tiny" style="margin-top:4px">Conforme você for classificando os credores em Credores → Editar,
+          esta tabela vai se preenchendo e você calibra cada grupo separado.</p>
+          <div class="tbl-wrap" style="margin-top:12px;border:0"><table>
+            <thead><tr><th>Prioridade</th><th class="num">Credores</th><th class="num">Saldo</th>
+              <th class="num">Total em ${n}x</th><th class="num">%</th></tr></thead>
+            <tbody>${porPrio.map(g => `<tr${g.n ? '' : ' style="opacity:.45"'}>
+              <td><span class="prio" style="color:${g.cor}"><i style="background:${g.cor}"></i>${escHtml(g.nome)}</span></td>
+              <td class="num">${g.n}</td>
+              <td class="num">${g.n ? fmtBRL(g.saldo) : '—'}</td>
+              <td class="num">${g.n ? fmtBRL(g.sim) : '—'}</td>
+              <td class="num">${g.n ? fmtPct(g.saldo ? g.sim / g.saldo : 0, 1) : '—'}</td></tr>`).join('')}</tbody>
+          </table></div>
+        </div>
+        <div class="card card-pad">
+          <h2>Como fica para os maiores</h2>
+          <div class="tbl-wrap" style="margin-top:12px;border:0"><table>
+            <thead><tr><th>Credor</th><th class="num">Saldo</th><th class="num">Parcela em ${n}x</th></tr></thead>
+            <tbody>${alvos.sort((a, b) => b.saldoDevedor - a.saldoDevedor).slice(0, 8).map(c => `<tr>
+              <td>${escHtml(c.nome)}${c.contaLabel ? ` <span class="tiny muted">${escHtml(c.contaLabel)}</span>` : ''}</td>
+              <td class="num">${fmtBRL(c.saldoDevedor)}</td>
+              <td class="num">${fmtBRL(simularParcelamento(c.saldoDevedor, iSim, n).valorParcela)}</td></tr>`).join('')}</tbody>
+          </table></div>
+        </div>
+      </div>
+
+      <div class="card card-pad">
+        <h2>Aplicar</h2>
+        <p class="muted tiny" style="margin-top:4px">A simulação acima não muda nada sozinha. Escolha o que gravar.</p>
+        <div class="row" style="margin-top:14px">
+          <button class="btn-primary btn-sm" id="calGeral">Usar ${String(S.cal.indice).replace('.', ',')}% como índice geral</button>
+          <button class="btn-sm" id="calLote">Gravar ${String(S.cal.indice).replace('.', ',')}% nos ${alvos.length} credores do recorte</button>
+          <button class="btn-sm" id="calMax">Usar ${n}x como máximo de parcelas</button>
+        </div>
+        <div class="help" style="margin-top:10px">O índice geral vale para quem não tem índice próprio.
+        Gravar no recorte sobrescreve o índice individual de cada um deles.</div>
+      </div>
+    </div>`);
+
+    const redesenha = () => abaCalibragem();
+    porId('calInd').onchange = e => { S.cal.indice = e.target.value; redesenha(); };
+    porId('calParc').onchange = e => { S.cal.parcelas = e.target.value; redesenha(); };
+    porId('calRec').onchange = e => { S.cal.recorte = e.target.value; redesenha(); };
+    ligar('[data-ind]', 'click', e => { S.cal.indice = Number(e.currentTarget.dataset.ind); redesenha(); });
+    ligar('[data-parc]', 'click', e => { S.cal.parcelas = Number(e.currentTarget.dataset.parc); redesenha(); });
+
+    porId('calGeral').onclick = async () => {
+      if (!confirm('Passar o índice geral para ' + S.cal.indice + '% ao mês?\n\nVale para todo credor que não tenha índice próprio.')) return;
+      await Backend.salvarConfig({ taxaPadrao: iSim });
+      await recarregar(); irPara('calibragem');
+    };
+    porId('calMax').onclick = async () => {
+      if (!confirm('Passar o máximo de parcelas para ' + n + 'x?\n\nÉ o teto que o credor vê no simulador.')) return;
+      await Backend.salvarConfig({ maxParcelas: n });
+      await recarregar(); irPara('calibragem');
+    };
+    porId('calLote').onclick = async () => {
+      if (!alvos.length) return;
+      if (!confirm('Gravar ' + S.cal.indice + '% ao mês em ' + alvos.length + ' credores?\n\nIsso sobrescreve o índice individual de cada um.')) return;
+      if (!confirm('Confirmação final: ' + alvos.length + ' credores vão passar a calcular a parcela com ' + S.cal.indice + '% ao mês.')) return;
+      const b = porId('calLote'); b.disabled = true; b.textContent = 'Gravando…';
+      for (const c of alvos) await Backend.atualizarConta(c.id, { taxaMensal: iSim });
+      await recarregar(); irPara('calibragem');
+    };
+  }
+
+  /* ================================================================
+     RELATÓRIO DE ERROS
+     ================================================================ */
+  const ORDEM_SEV = { critica: 0, alta: 1, media: 2, baixa: 3 };
+  const ROT_SEV = { critica: 'Crítica — resolver antes de publicar', alta: 'Alta — trava o acesso da pessoa',
+    media: 'Média — pode entrar, mas confirme', baixa: 'Baixa — só informativo' };
+
+  function abaPendencias() {
+    const itens = [];
+    S.contas.forEach(c => (c.pendencias || []).forEach(p => itens.push({ c, p })));
+    itens.sort((a, b) => (ORDEM_SEV[a.p.severidade] - ORDEM_SEV[b.p.severidade]) || b.c.saldoDevedor - a.c.saldoDevedor);
+    const porSev = {};
+    itens.forEach(i => (porSev[i.p.severidade] = porSev[i.p.severidade] || []).push(i));
+
+    render(`
+    <div class="stack">
+      <div class="card card-pad">
+        <h2>Relatório de erros de cadastro</h2>
+        <p class="muted tiny" style="margin-top:4px">Cada item aqui é um dado que veio incompleto ou inconsistente das planilhas.
+        Corrija no próprio credor e marque como resolvido. Contas com erro de acesso ficam bloqueadas até você resolver.</p>
+        <div class="tiles" style="margin-top:14px">
+          ${Object.keys(ORDEM_SEV).map(s => `<div class="tile">
+            <div class="t-rot">${escHtml(ROT_SEV[s])}</div>
+            <div class="t-val">${(porSev[s] || []).length}</div></div>`).join('')}
+        </div>
+        ${itens.length ? '' : `<div style="margin-top:14px">${aviso('Nenhuma pendência em aberto.', 'ok')}</div>`}
+      </div>
+      ${Object.keys(ORDEM_SEV).filter(s => (porSev[s] || []).length).map(s => `
+        <div class="card card-pad">
+          <h2>${escHtml(ROT_SEV[s])} <span class="tag ${s === 'critica' ? 'tag-bad' : s === 'alta' ? 'tag-warn' : 'tag-neutral'}">${porSev[s].length}</span></h2>
+          <div style="margin-top:12px">
+          ${porSev[s].map(({ c, p }) => `<div class="pend-item ${s}">
+            <div class="row-between">
+              <div class="grow">
+                <strong>${escHtml(c.nome)}</strong>
+                ${c.contaLabel ? `<span class="tiny muted"> ${escHtml(c.contaLabel)}</span>` : ''}
+                <span class="tiny muted"> · ref ${c.ref ?? '—'} · ${fmtBRL(c.saldoDevedor)}</span>
+                ${!c.ativo ? ' <span class="tag tag-bad">acesso bloqueado</span>' : ''}
+                <div style="margin-top:5px">${escHtml(p.detalhe)}</div>
+                <div class="tiny muted" style="margin-top:4px"><strong>O que fazer:</strong> ${escHtml(p.acao)}</div>
+              </div>
+              <button class="btn-sm" data-edit2="${c.id}">Corrigir</button>
+            </div>
+          </div>`).join('')}
+          </div>
+        </div>`).join('')}
+    </div>`);
+    ligar('[data-edit2]', 'click', e => modalEditarConta(e.currentTarget.dataset.edit2));
+  }
+
+  /* ================================================================
+     CONFIGURAÇÕES
+     ================================================================ */
+  function abaConfig() {
+    render(`
+    <div class="stack">
+      <div class="card card-pad">
+        <h2>Regras gerais</h2>
+        <p class="muted tiny" style="margin-top:4px">Valem para todos os credores que não têm configuração própria.</p>
+        <div class="grid2" style="margin-top:14px">
+          <div class="field"><label for="cMax">Máximo de parcelas na simulação</label>
+            <input id="cMax" type="number" min="1" max="120" value="${S.cfg.maxParcelas}"></div>
+          <div class="field"><label for="cTaxa">Índice de correção da parcela (% ao mês)</label>
+            <input id="cTaxa" inputmode="decimal" value="${Number(S.cfg.taxaPadrao || 0) * 100}">
+            <div class="help">Nunca aparece na tela do credor — só o valor da parcela e o percentual.</div></div>
+          <div class="field"><label for="cData">Data de referência do saldo devedor</label>
+            <input id="cData" value="${escHtml(S.cfg.dataReferencia || '01/08/2026')}"></div>
+          <div class="field"><label for="cTitulo">Título da aba do navegador (aparece no print)</label>
+            <input id="cTitulo" value="${escHtml(S.cfg.tituloAba || 'Área de consulta')}"></div>
+          <div class="field"><label for="cWa">Seu WhatsApp de atendimento</label>
+            <input id="cWa" inputmode="tel" maxlength="16" value="${escHtml(mascaraTel(S.cfg.whatsappAdm))}">
+            <div class="help">Número de onde você fala com quem abre chamado. Só você vê.</div></div>
+        </div>
+        <div class="sep"></div>
+        <label class="check"><input type="checkbox" id="cVerif" ${S.cfg.exigirEmailVerificado !== false ? 'checked' : ''}>
+          <span>Exigir que a pessoa confirme o e-mail antes de informar CPF e telefone</span></label>
+        <div class="help" style="margin-top:6px">Recomendado deixar marcado. Como qualquer e-mail cria acesso, é a confirmação
+        que impede alguém de abrir logins descartáveis em série para tentar adivinhar os 4 dígitos de um CPF conhecido.</div>
+        <button class="btn-primary btn-sm" style="margin-top:14px" id="bSalvarGeral">Salvar regras gerais</button>
+      </div>
+
+      <div class="card card-pad">
+        <h2>Grupos de prioridade</h2>
+        <p class="muted tiny" style="margin-top:4px">Só você vê. A ordem da lista é a ordem de prioridade, e o
+        <strong>primeiro item é o padrão</strong> de quem ainda não foi classificado.</p>
+        <div id="listaPrio" style="margin-top:14px"></div>
+        <div class="row" style="margin-top:12px">
+          <input id="pNovo" placeholder="Nome do novo grupo" style="max-width:240px">
+          <input id="pCor" type="color" value="#2a5578" style="max-width:70px;padding:4px">
+          <button class="btn-sm" id="bAddPrio">Adicionar</button>
+        </div>
+      </div>
+
+      <div class="card card-pad">
+        <h2>Termos jurídicos</h2>
+        <p class="muted tiny" style="margin-top:4px">Este é o texto que o credor tem que aceitar antes de ver qualquer valor.</p>
+        <textarea id="cTermos" style="min-height:280px;margin-top:12px;font-family:var(--mono);font-size:.84rem">${escHtml(S.cfg.termos || '')}</textarea>
+        <div class="row" style="margin-top:12px">
+          <button class="btn-primary btn-sm" id="bSalvarTermos">Salvar termos</button>
+          <span class="tiny muted">Quem já aceitou a versão anterior não é obrigado a aceitar de novo.</span>
+        </div>
+      </div>
+
+      ${Backend.local ? `<div class="card card-pad">
+        <h2>Recomeçar do zero</h2>
+        <p class="muted tiny" style="margin-top:4px">Apaga tudo que foi criado no servidor local — vínculos de acesso,
+        propostas, chamados, tentativas e configurações — e recarrega os credores da base original.
+        Sua senha de administrador é mantida. Antes de fazer isso, se quiser guardar o estado atual,
+        copie o arquivo <code>dados/dados.json</code> para outro lugar.</p>
+        <button class="btn-sm btn-bad" id="bRecomecar" style="margin-top:10px">Recomeçar do zero</button>
+      </div>` : ''}
+    </div>`);
+
+    const desenharPrio = () => {
+      porId('listaPrio').innerHTML = (S.cfg.prioridades || []).map((pr, i) => `
+        <div class="row-between" style="border:1px solid var(--line);border-radius:var(--r-sm);padding:9px 12px;margin-bottom:7px">
+          <div class="row">
+            <input type="color" value="${pr.cor}" data-cor="${i}" style="width:44px;padding:3px">
+            <input value="${escHtml(pr.nome)}" data-nome="${i}" style="max-width:220px">
+          </div>
+          <div class="row">
+            <button class="btn-sm" data-sube="${i}" ${i === 0 ? 'disabled' : ''}>↑</button>
+            <button class="btn-sm" data-desce="${i}" ${i === S.cfg.prioridades.length - 1 ? 'disabled' : ''}>↓</button>
+            <button class="btn-sm btn-bad" data-rem="${i}">Remover</button>
+          </div>
+        </div>`).join('');
+      const salvar = async () => { await Backend.salvarConfig({ prioridades: S.cfg.prioridades }); };
+      porId('listaPrio').querySelectorAll('[data-nome]').forEach(n => n.onchange = async e => {
+        S.cfg.prioridades[Number(e.target.dataset.nome)].nome = e.target.value; await salvar();
+      });
+      porId('listaPrio').querySelectorAll('[data-cor]').forEach(n => n.onchange = async e => {
+        S.cfg.prioridades[Number(e.target.dataset.cor)].cor = e.target.value; await salvar(); desenharPrio();
+      });
+      porId('listaPrio').querySelectorAll('[data-sube]').forEach(n => n.onclick = async e => {
+        const i = Number(e.currentTarget.dataset.sube); const a = S.cfg.prioridades;
+        [a[i - 1], a[i]] = [a[i], a[i - 1]]; await salvar(); desenharPrio();
+      });
+      porId('listaPrio').querySelectorAll('[data-desce]').forEach(n => n.onclick = async e => {
+        const i = Number(e.currentTarget.dataset.desce); const a = S.cfg.prioridades;
+        [a[i + 1], a[i]] = [a[i], a[i + 1]]; await salvar(); desenharPrio();
+      });
+      porId('listaPrio').querySelectorAll('[data-rem]').forEach(n => n.onclick = async e => {
+        const i = Number(e.currentTarget.dataset.rem);
+        if (!confirm('Remover este grupo de prioridade?')) return;
+        S.cfg.prioridades.splice(i, 1); await salvar(); desenharPrio();
+      });
+    };
+    desenharPrio();
+
+    porId('cWa').addEventListener('input', e => { e.target.value = mascaraTel(e.target.value); });
+    porId('bAddPrio').onclick = async () => {
+      const nome = porId('pNovo').value.trim();
+      if (!nome) return;
+      S.cfg.prioridades = [...(S.cfg.prioridades || []), { nome, cor: porId('pCor').value }];
+      await Backend.salvarConfig({ prioridades: S.cfg.prioridades });
+      porId('pNovo').value = ''; desenharPrio();
+    };
+    porId('bSalvarGeral').onclick = async () => {
+      const patch = {
+        maxParcelas: Number(porId('cMax').value || 36),
+        taxaPadrao: Number(String(porId('cTaxa').value).replace(',', '.') || 0) / 100,
+        dataReferencia: porId('cData').value.trim(),
+        tituloAba: porId('cTitulo').value.trim(),
+        whatsappAdm: soDigitos(porId('cWa').value),
+        exigirEmailVerificado: porId('cVerif').checked
+      };
+      await Backend.salvarConfig(patch);
+      Object.assign(S.cfg, patch);
+      porId('bSalvarGeral').textContent = 'Salvo ✓';
+      setTimeout(() => { if (porId('bSalvarGeral')) porId('bSalvarGeral').textContent = 'Salvar regras gerais'; }, 1600);
+    };
+    porId('bSalvarTermos').onclick = async () => {
+      await Backend.salvarConfig({ termos: porId('cTermos').value });
+      S.cfg.termos = porId('cTermos').value;
+      porId('bSalvarTermos').textContent = 'Salvo ✓';
+      setTimeout(() => { if (porId('bSalvarTermos')) porId('bSalvarTermos').textContent = 'Salvar termos'; }, 1600);
+    };
+    if (porId('bRecomecar')) porId('bRecomecar').onclick = async () => {
+      if (!confirm('Apagar tudo que foi criado e recarregar a base original?\n\nVínculos, propostas, chamados e calibragem são perdidos.')) return;
+      if (!confirm('Confirmação final: isso não tem volta, a não ser que você tenha copiado o dados/dados.json antes.')) return;
+      await Backend.admRecomecar();
+      location.reload();
+    };
+  }
+
+  /* ================================================================
+     navegação e ciclo de vida
+     ================================================================ */
+  const TELAS = { painel: abaPainel, propostas: abaPropostas, chamados: abaChamados,
+    credores: abaCredores, calibragem: abaCalibragem, pendencias: abaPendencias, config: abaConfig };
+
+  function irPara(t) {
+    S.aba = t;
+    document.querySelectorAll('#navAbas .aba').forEach(b => b.setAttribute('aria-selected', b.dataset.t === t));
+    (TELAS[t] || abaPainel)();
+  }
+
+  async function recarregar() {
+    [S.contas, S.propostas, S.chamados, S.cfg, S.tentativas] = await Promise.all([
+      Backend.admContas(), Backend.admPropostas(), Backend.admChamados(), Backend.lerConfig(),
+      Backend.admTentativas().catch(() => [])
+    ]);
+  }
+
+
+  document.querySelectorAll('#navAbas .aba').forEach(b => b.onclick = () => irPara(b.dataset.t));
+  porId('bRecarregar').onclick = async () => { await recarregar(); irPara(S.aba); };
+  porId('bSairAdm').onclick = async () => { await Backend.sair(); location.reload(); };
+
+  /* Chamado quando quem entrou é administrador. Esconde a tela do credor e
+     mostra o painel: mesma página, mesmo endereço, sem recarregar nada. */
+  async function abrir(usuario) {
+    S.usuario = usuario;
+    document.getElementById('app').classList.add('hide');
+    elTopo.classList.remove('hide');
+    el.classList.remove('hide');
+    porId('tagModo').textContent = Backend.rotulo;
+    porId('quemSou').textContent = usuario.email;
+    render(`<div class="card card-pad center muted">Carregando…</div>`);
+    await recarregar();
+    irPara('painel');
+  }
+
+  return { abrir };
+})();
+
+
+</script>
+<script>
+(async function () {
+  await Backend.init();
+  const app = document.getElementById('app');
+  if (!Backend.pronto) { app.innerHTML = Backend.htmlIndisponivel(); return; }
+  if (Backend.servidorDesatualizado) { app.innerHTML = Backend.htmlServidorAntigo(); return; }
+  await Credor.iniciar();
+})();
+</script>
+</body>
+</html>
